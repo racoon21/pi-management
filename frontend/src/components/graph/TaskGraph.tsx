@@ -25,7 +25,6 @@ const levelColors: Record<TaskLevel, string> = {
 
 // 노드 크기 상수 (확대된 노드 크기 반영)
 const NODE_WIDTH = 280;
-const NODE_HEIGHT = 80;
 const NODE_PADDING = 30; // 노드 간 최소 간격
 const MIN_NODE_SPACING = NODE_WIDTH + NODE_PADDING; // 노드 간 최소 거리
 

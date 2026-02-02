@@ -182,6 +182,7 @@ export const getTaskHistory = (taskId: string): TaskHistory[] => {
       version: i,
       change_type: i === 1 ? 'CREATE' : 'UPDATE',
       changed_by: 'user-001',
+      changed_by_name: '관리자',
       changed_at: new Date(Date.now() - (task.version - i) * 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
   }

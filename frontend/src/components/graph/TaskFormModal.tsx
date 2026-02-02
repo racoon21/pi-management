@@ -6,7 +6,7 @@ import { Badge } from '../shared/Badge';
 import { useTaskStore } from '../../stores/taskStore';
 import { useModalStore } from '../../stores/modalStore';
 import { taskApi } from '../../api';
-import type { TaskLevel, TaskGraphItem, TaskHistory } from '../../types/task';
+import type { TaskLevel, TaskHistory } from '../../types/task';
 import { Edit, Save, X, User, Building, Tag, Calendar, Sparkles, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -20,8 +20,8 @@ const NEXT_LEVEL: Record<TaskLevel, TaskLevel | null> = {
 
 export const TaskFormModal = () => {
   const { isOpen, type, data, closeModal } = useModalStore();
-  const { tasks, createTask, updateTask, selectedTask, fetchTasks } = useTaskStore();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { tasks, createTask, updateTask, selectedTask } = useTaskStore();
+  const [, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<'detail' | 'history'>('detail');
 
