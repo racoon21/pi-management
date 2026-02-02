@@ -1,0 +1,3 @@
+# Cloudflare Pages 리다이렉트 규칙
+# SPA를 위한 fallback
+/*    /index.html   200

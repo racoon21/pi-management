@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: pi-management
+    env: docker
+    dockerfilePath: ./Dockerfile.render
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: CORS_ORIGINS_STR
+        sync: false

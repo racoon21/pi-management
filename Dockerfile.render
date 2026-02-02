@@ -1,0 +1,46 @@
+# Stage 1: Frontend 빌드
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+# 프로덕션용 API URL 설정 (같은 도메인이므로 상대 경로)
+ENV VITE_API_URL=""
+RUN npm run build
+
+# Stage 2: Backend + Frontend 서빙
+FROM python:3.11-slim
+
+# 보안: 비-루트 사용자 생성
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
+WORKDIR /app
+
+# Backend 의존성 설치
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir aiofiles
+
+# Backend 소스 복사
+COPY backend/ .
+
+# Frontend 빌드 결과물 복사
+COPY --from=frontend-builder /frontend/dist ./static
+
+# 소유권 변경
+RUN chown -R appuser:appgroup /app
+
+# 비-루트 사용자로 전환
+USER appuser
+
+# 환경변수 (기본값)
+ENV ENVIRONMENT=production
+ENV DEBUG=false
+
+# 포트
+EXPOSE 10000
+
+# Render는 $PORT 환경변수 사용
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}
