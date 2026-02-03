@@ -6,6 +6,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   BackgroundVariant,
+  ConnectionLineType,
 } from 'reactflow';
 import type { Node, Edge, NodeMouseHandler } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -23,25 +24,13 @@ const levelColors: Record<TaskLevel, string> = {
   L4: '#E4E3EC',
 };
 
-// 노드 크기 상수 (확대된 노드 크기 반영)
-const NODE_WIDTH = 280;
-const NODE_PADDING = 30; // 노드 간 최소 간격
-const MIN_NODE_SPACING = NODE_WIDTH + NODE_PADDING; // 노드 간 최소 거리
+// 노드 크기 상수
+const NODE_HEIGHT = 70;
+const HORIZONTAL_SPACING = 280; // 레벨 간 수평 간격
+const VERTICAL_SPACING = 100; // 노드 간 수직 간격
 
-// 레벨별 기본 반경 (노드 크기 증가에 따라 조정)
-const BASE_RADIUS: Record<string, number> = {
-  Root: 0,
-  L1: 250,
-  L2: 480,
-  L3: 700,
-  L4: 900,
-};
-
-// 레벨 간 최소 거리
-const MIN_LEVEL_GAP = 200;
-
-// 방사형 레이아웃 (계층 유지 + 겹침 방지)
-const calculateRadialLayout = (
+// 수평 계층형 레이아웃 (좌→우, 연결선 꼬임 방지)
+const calculateHierarchicalLayout = (
   tasks: TaskGraphItem[],
   expandedNodes: Set<string>,
   selectedId: string | null
@@ -64,9 +53,6 @@ const calculateRadialLayout = (
   const root = tasks.find(t => t.level === 'Root');
   if (!root) return { nodes, edges };
 
-  const CENTER_X = 0;
-  const CENTER_Y = 0;
-
   // 보이는 노드인지 확인
   const isVisible = (task: TaskGraphItem): boolean => {
     if (task.level === 'Root') return true;
@@ -74,67 +60,6 @@ const calculateRadialLayout = (
     const parent = taskMap.get(task.parent_id);
     if (!parent) return false;
     return expandedNodes.has(task.parent_id) && isVisible(parent);
-  };
-
-  // 각 레벨별 보이는 노드 수 계산
-  const visibleNodesByLevel = new Map<string, TaskGraphItem[]>();
-  tasks.forEach(task => {
-    if (isVisible(task)) {
-      const levelNodes = visibleNodesByLevel.get(task.level) || [];
-      levelNodes.push(task);
-      visibleNodesByLevel.set(task.level, levelNodes);
-    }
-  });
-
-  // 레벨별 반경 계산 (노드 수에 따라 동적 조정, 겹침 방지)
-  const levelRadiusCache = new Map<string, number>();
-
-  const calculateRadius = (level: string): number => {
-    if (levelRadiusCache.has(level)) {
-      return levelRadiusCache.get(level)!;
-    }
-
-    const baseRadius = BASE_RADIUS[level] || 400;
-    const nodeCount = visibleNodesByLevel.get(level)?.length || 1;
-
-    // 노드가 겹치지 않도록 필요한 최소 반경 계산
-    // 원주 = 2πr, 필요한 최소 원주 = nodeCount * MIN_NODE_SPACING
-    const minRadiusForNodes = (nodeCount * MIN_NODE_SPACING) / (2 * Math.PI);
-
-    // 이전 레벨과의 간격 유지
-    const levels = ['Root', 'L1', 'L2', 'L3', 'L4'];
-    const levelIndex = levels.indexOf(level);
-    let minRadiusForGap = baseRadius;
-
-    if (levelIndex > 0) {
-      const prevLevel = levels[levelIndex - 1];
-      const prevRadius = levelRadiusCache.get(prevLevel) || BASE_RADIUS[prevLevel] || 0;
-      minRadiusForGap = prevRadius + MIN_LEVEL_GAP;
-    }
-
-    const finalRadius = Math.max(baseRadius, minRadiusForNodes, minRadiusForGap);
-    levelRadiusCache.set(level, finalRadius);
-
-    return finalRadius;
-  };
-
-  // 레벨 순서대로 반경 미리 계산 (의존성 해결)
-  const levels = ['Root', 'L1', 'L2', 'L3', 'L4'];
-  levels.forEach(level => {
-    if (visibleNodesByLevel.has(level)) {
-      calculateRadius(level);
-    }
-  });
-
-  // 보이는 자식의 잎 노드 수 (가중치 계산용)
-  const getVisibleLeafCount = (taskId: string): number => {
-    const children = childrenMap.get(taskId) || [];
-    if (children.length === 0 || !expandedNodes.has(taskId)) return 1;
-
-    const visibleChildren = children.filter(c => isVisible(c));
-    if (visibleChildren.length === 0) return 1;
-
-    return visibleChildren.reduce((sum, child) => sum + getVisibleLeafCount(child.id), 0);
   };
 
   // Check if nodeId is in the path to selectedId
@@ -162,96 +87,105 @@ const calculateRadialLayout = (
     return checkDescendants(selectedId);
   };
 
-  // 특정 반경에서 노드 간 겹침 방지를 위한 최소 각도 계산
-  const getMinAngleForLevel = (level: string): number => {
-    const radius = calculateRadius(level);
-    if (radius === 0) return 0;
-    // 호의 길이 = 반경 * 각도, 필요한 최소 호 길이 = MIN_NODE_SPACING
-    // 따라서 최소 각도 = MIN_NODE_SPACING / 반경
-    return MIN_NODE_SPACING / radius;
-  };
-
-  // 노드 배치 (재귀)
-  const positionNodes = (
-    parentId: string,
-    startAngle: number,
-    endAngle: number
-  ): void => {
-    const children = childrenMap.get(parentId) || [];
+  // 서브트리의 총 높이 계산 (보이는 노드만)
+  const getSubtreeHeight = (taskId: string): number => {
+    const children = childrenMap.get(taskId) || [];
     const visibleChildren = children.filter(c => isVisible(c));
 
-    if (visibleChildren.length === 0) return;
-
-    // 각 자식의 가중치 계산 (펼쳐진 자손 노드 수 기반)
-    const weights = visibleChildren.map(child => getVisibleLeafCount(child.id));
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-
-    let angleRange = endAngle - startAngle;
-
-    // 자식 레벨의 최소 각도 확인
-    if (visibleChildren.length > 0) {
-      const childLevel = visibleChildren[0].level;
-      const minAngle = getMinAngleForLevel(childLevel);
-      const requiredAngle = minAngle * visibleChildren.length;
-
-      // 필요한 각도가 할당된 범위보다 크면 각도 범위 확장
-      if (requiredAngle > angleRange) {
-        const center = (startAngle + endAngle) / 2;
-        startAngle = center - requiredAngle / 2;
-        endAngle = center + requiredAngle / 2;
-        angleRange = endAngle - startAngle;
-      }
+    if (visibleChildren.length === 0 || !expandedNodes.has(taskId)) {
+      return NODE_HEIGHT;
     }
 
-    let currentAngle = startAngle;
+    const childrenTotalHeight = visibleChildren.reduce((sum, child) => {
+      return sum + getSubtreeHeight(child.id);
+    }, 0);
 
-    visibleChildren.forEach((child, index) => {
-      const childWeight = weights[index];
-      let childAngleRange = (childWeight / totalWeight) * angleRange;
+    // 자식들 사이의 간격 추가
+    const gaps = Math.max(0, visibleChildren.length - 1) * VERTICAL_SPACING;
 
-      // 최소 각도 보장
-      const minAngle = getMinAngleForLevel(child.level);
-      childAngleRange = Math.max(childAngleRange, minAngle);
+    return Math.max(NODE_HEIGHT, childrenTotalHeight + gaps);
+  };
 
-      const childAngle = currentAngle + childAngleRange / 2;
+  // 레벨별 X 좌표 계산
+  const getLevelX = (level: string): number => {
+    const levels = ['Root', 'L1', 'L2', 'L3', 'L4'];
+    const index = levels.indexOf(level);
+    return index * HORIZONTAL_SPACING;
+  };
 
-      // 레벨별 동적 반경 적용
-      const radius = calculateRadius(child.level);
-      const x = CENTER_X + radius * Math.cos(childAngle);
-      const y = CENTER_Y + radius * Math.sin(childAngle);
+  // 노드 배치 (재귀) - 부모 중심으로 자식들을 수직 정렬
+  const positionNodes = (
+    taskId: string,
+    startY: number
+  ): number => {
+    const task = taskMap.get(taskId);
+    if (!task || !isVisible(task)) return startY;
 
-      const allChildren = childrenMap.get(child.id) || [];
-      const hasChildren = allChildren.length > 0;
-      const isExpanded = expandedNodes.has(child.id);
+    const children = childrenMap.get(taskId) || [];
+    const visibleChildren = children.filter(c => isVisible(c));
+    const isExpanded = expandedNodes.has(taskId);
 
-      const isSelected = child.id === selectedId;
-      const isInPath = isNodeInPath(child.id);
+    let subtreeHeight = getSubtreeHeight(taskId);
+    const nodeX = getLevelX(task.level);
+
+    // 자식이 없거나 접혀있으면 현재 노드만 배치
+    if (visibleChildren.length === 0 || !isExpanded) {
+      const nodeY = startY + subtreeHeight / 2 - NODE_HEIGHT / 2;
+
+      const hasChildren = children.length > 0;
+      const isSelected = task.id === selectedId;
+      const isInPath = isNodeInPath(task.id);
       const shouldBlur = selectedId !== null && !isSelected && !isInPath;
 
       nodes.push({
-        id: child.id,
+        id: task.id,
         type: 'task',
-        position: { x, y },
+        position: { x: nodeX, y: nodeY },
         data: {
-          name: child.name,
-          level: child.level,
-          organization: child.organization,
-          is_ai_utilized: child.is_ai_utilized,
+          name: task.name,
+          level: task.level,
+          organization: task.organization,
+          is_ai_utilized: task.is_ai_utilized,
           isBlurred: shouldBlur,
           hasChildren,
           isExpanded,
-          childCount: allChildren.length,
+          childCount: children.length,
         },
         selected: isSelected,
       });
 
-      // Edge
+      return startY + subtreeHeight;
+    }
+
+    // 자식들의 서브트리 높이 계산
+    const childHeights = visibleChildren.map(child => getSubtreeHeight(child.id));
+    const totalChildrenHeight = childHeights.reduce((a, b) => a + b, 0);
+    const totalGaps = Math.max(0, visibleChildren.length - 1) * VERTICAL_SPACING;
+    const childrenBlockHeight = totalChildrenHeight + totalGaps;
+
+    // 자식들 배치
+    let currentY = startY;
+    const childCenters: number[] = [];
+
+    visibleChildren.forEach((child, index) => {
+      const childHeight = childHeights[index];
+      const childCenter = currentY + childHeight / 2;
+      childCenters.push(childCenter);
+
+      // 재귀적으로 자식 서브트리 배치
+      positionNodes(child.id, currentY);
+
+      // 엣지 추가
+      const isSelected = child.id === selectedId;
+      const isInPath = isNodeInPath(child.id);
       const isEdgeHighlighted = isSelected || isInPath;
+      const shouldBlur = selectedId !== null && !isSelected && !isInPath;
+
       edges.push({
-        id: `${parentId}-${child.id}`,
-        source: parentId,
+        id: `${taskId}-${child.id}`,
+        source: taskId,
         target: child.id,
-        type: 'default',
+        type: 'smoothstep',
         style: {
           stroke: isEdgeHighlighted ? '#191927' : '#9ca3af',
           strokeWidth: isEdgeHighlighted ? 2.5 : 1.5,
@@ -260,44 +194,41 @@ const calculateRadialLayout = (
         animated: isEdgeHighlighted,
       });
 
-      // 자식 노드들 재귀 배치
-      if (isExpanded) {
-        positionNodes(child.id, currentAngle, currentAngle + childAngleRange);
-      }
-
-      currentAngle += childAngleRange;
+      currentY += childHeight + VERTICAL_SPACING;
     });
+
+    // 부모 노드는 자식들의 중앙에 배치
+    const firstChildCenter = childCenters[0];
+    const lastChildCenter = childCenters[childCenters.length - 1];
+    const parentY = (firstChildCenter + lastChildCenter) / 2 - NODE_HEIGHT / 2;
+
+    const hasChildren = children.length > 0;
+    const isSelected = task.id === selectedId;
+    const isInPath = isNodeInPath(task.id);
+    const shouldBlur = selectedId !== null && !isSelected && !isInPath;
+
+    nodes.push({
+      id: task.id,
+      type: 'task',
+      position: { x: nodeX, y: parentY },
+      data: {
+        name: task.name,
+        level: task.level,
+        organization: task.organization,
+        is_ai_utilized: task.is_ai_utilized,
+        isBlurred: shouldBlur,
+        hasChildren,
+        isExpanded,
+        childCount: children.length,
+      },
+      selected: isSelected,
+    });
+
+    return startY + childrenBlockHeight;
   };
 
-  // Root 노드 추가
-  const rootChildren = childrenMap.get(root.id) || [];
-  const hasChildren = rootChildren.length > 0;
-  const isRootExpanded = expandedNodes.has(root.id);
-  const isRootSelected = root.id === selectedId;
-  const isRootInPath = isNodeInPath(root.id);
-  const shouldRootBlur = selectedId !== null && !isRootSelected && !isRootInPath;
-
-  nodes.push({
-    id: root.id,
-    type: 'task',
-    position: { x: CENTER_X, y: CENTER_Y },
-    data: {
-      name: root.name,
-      level: root.level,
-      organization: root.organization,
-      is_ai_utilized: root.is_ai_utilized,
-      isBlurred: shouldRootBlur,
-      hasChildren,
-      isExpanded: isRootExpanded,
-      childCount: rootChildren.length,
-    },
-    selected: isRootSelected,
-  });
-
-  // L1부터 방사형 배치
-  if (isRootExpanded) {
-    positionNodes(root.id, -Math.PI, Math.PI);
-  }
+  // Root부터 시작
+  positionNodes(root.id, 0);
 
   return { nodes, edges };
 };
@@ -365,7 +296,7 @@ export const TaskGraph = () => {
 
   // Calculate layout
   const layoutedElements = useMemo(() => {
-    return calculateRadialLayout(filteredTasks, expandedNodes, selectedTaskId);
+    return calculateHierarchicalLayout(filteredTasks, expandedNodes, selectedTaskId);
   }, [filteredTasks, expandedNodes, selectedTaskId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedElements.nodes);
@@ -401,6 +332,7 @@ export const TaskGraph = () => {
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
+        connectionLineType={ConnectionLineType.SmoothStep}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}

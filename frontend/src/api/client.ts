@@ -32,11 +32,23 @@ class ApiClient {
     return { 'Content-Type': 'application/json' };
   }
 
+  private handleUnauthorized(): void {
+    // Clear auth storage
+    localStorage.removeItem('auth-storage');
+    // Redirect to login page
+    window.location.href = '/login';
+  }
+
   async get<T>(endpoint: string): Promise<T> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
     });
+
+    if (response.status === 401) {
+      this.handleUnauthorized();
+      throw new Error('Unauthorized');
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Network error' }));
@@ -54,6 +66,11 @@ class ApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
 
+    if (response.status === 401) {
+      this.handleUnauthorized();
+      throw new Error('Unauthorized');
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Network error' }));
       throw new Error(error.detail || `HTTP ${response.status}`);
@@ -70,6 +87,11 @@ class ApiClient {
       body: JSON.stringify(data),
     });
 
+    if (response.status === 401) {
+      this.handleUnauthorized();
+      throw new Error('Unauthorized');
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Network error' }));
       throw new Error(error.detail || `HTTP ${response.status}`);
@@ -84,6 +106,11 @@ class ApiClient {
       method: 'DELETE',
       headers: this.getAuthHeaders(),
     });
+
+    if (response.status === 401) {
+      this.handleUnauthorized();
+      throw new Error('Unauthorized');
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Network error' }));
