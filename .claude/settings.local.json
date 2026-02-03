@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(copy:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: PgBouncer 호환성을 위해 prepared statements 비활성화\n\n- asyncpg의 prepared_statement_cache_size를 0으로 설정\n- NullPool 사용 \\(PgBouncer가 connection pooling 담당\\)\n- CORS 설정 정리 \\(same-origin에서는 불필요\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}

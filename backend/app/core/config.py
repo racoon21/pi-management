@@ -68,7 +68,8 @@ class Settings(BaseSettings):
                 "http://127.0.0.1:3000",
             ]
 
-        # 프로덕션에서는 명시적으로 설정 필요
+        # 프로덕션에서 같은 도메인 서빙 시 CORS 불필요
+        # 빈 배열 반환 (same-origin 요청은 CORS 검사 안함)
         return []
 
     class Config:
