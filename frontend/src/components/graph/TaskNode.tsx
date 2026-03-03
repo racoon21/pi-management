@@ -58,7 +58,7 @@ export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
   return (
     <div
       className={`
-        relative px-3 py-2 rounded-lg border min-w-[200px] max-w-[280px]
+        relative px-2.5 py-1.5 rounded-lg border w-[200px]
         ${styles.bg} ${selected ? 'ring-2 ring-[#7952B3] ring-offset-2' : styles.border}
         transition-all duration-200 cursor-pointer
         hover:shadow-md hover:scale-[1.02]
@@ -75,43 +75,43 @@ export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
       )}
 
       {/* Header - Level Badge & AI indicator */}
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-1">
           {/* Expand/Collapse Icon */}
           {hasChildren && (
-            <div className="flex items-center justify-center w-4 h-4 flex-shrink-0">
+            <div className="flex items-center justify-center w-3.5 h-3.5 flex-shrink-0">
               {isExpanded ? (
-                <ChevronDown size={14} className={styles.text} />
+                <ChevronDown size={12} className={styles.text} />
               ) : (
-                <ChevronRight size={14} className={styles.text} />
+                <ChevronRight size={12} className={styles.text} />
               )}
             </div>
           )}
-          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${styles.badge}`}>
+          <span className={`px-1 py-0.5 text-[9px] font-bold rounded ${styles.badge}`}>
             {data.level}
           </span>
           {/* Child count indicator */}
           {hasChildren && !isExpanded && (
-            <span className={`text-[10px] ${styles.text} opacity-70`}>
+            <span className={`text-[9px] ${styles.text} opacity-70`}>
               (+{childCount})
             </span>
           )}
         </div>
         {data.is_ai_utilized && (
           <div className="flex items-center gap-0.5">
-            <Sparkles size={12} className="text-[#7952B3]" />
-            <span className={`text-[10px] ${styles.text} opacity-80`}>AI</span>
+            <Sparkles size={10} className="text-[#7952B3]" />
+            <span className={`text-[9px] ${styles.text} opacity-80`}>AI</span>
           </div>
         )}
       </div>
 
-      {/* Text - 여러 줄 표시 (최대 80자, 4줄) */}
+      {/* Text - 고정 너비에서 최대 2줄 표시 */}
       <div className="min-w-0">
         <div
-          className={`text-sm font-medium ${styles.text} leading-snug`}
+          className={`text-xs font-medium ${styles.text} leading-snug`}
           style={{
             display: '-webkit-box',
-            WebkitLineClamp: 4,
+            WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
             wordBreak: 'keep-all',

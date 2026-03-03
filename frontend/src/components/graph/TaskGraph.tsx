@@ -28,19 +28,24 @@ const levelColors: Record<TaskLevel, string> = {
 // 방사형 레벨 반경 (Root, L1, L2만)
 const LEVEL_RADIUS: Record<string, number> = {
   Root: 0,
-  L1: 280,
-  L2: 520,
+  L1: 400,
+  L2: 800,
 };
 
 // 계층형 트리 상수 (L3, L4)
-const TREE_L3_DEPTH = 280;
-const TREE_L4_DEPTH = 250;
-const L4_SIBLING_GAP = 85;
-const TREE_PADDING = 30;
+const TREE_L3_DEPTH = 240;
+const TREE_L4_DEPTH = 220;
+const L4_SIBLING_GAP = 100;
+const TREE_PADDING = 40;
 
-// 노드 크기
+// 노드 크기 (고정 너비 200px, text-xs 2줄 기준 실제 렌더링 ~68px)
 const NODE_WIDTH = 200;
 const NODE_HEIGHT = 70;
+
+// L4 2열 배치 상수
+const L4_COLUMN_THRESHOLD = 4;
+const L4_COLUMN_DEPTH_OFFSET = 230;
+const MIN_L4_EFFECTIVE_GAP = NODE_HEIGHT + 15;
 
 // 하이브리드 레이아웃: Root→L1→L2 방사형, L2→L3→L4 계층형
 const calculateHybridLayout = (
@@ -98,20 +103,9 @@ const calculateHybridLayout = (
     return checkDescendants(selectedId);
   };
 
-  const getVisibleLeafCount = (taskId: string): number => {
-    const children = childrenMap.get(taskId) || [];
-    const visibleChildren = children.filter(c => isVisible(c));
-
-    if (visibleChildren.length === 0 || !expandedNodes.has(taskId)) {
-      return 1;
-    }
-
-    return visibleChildren.reduce((sum, child) => sum + getVisibleLeafCount(child.id), 0);
-  };
-
   const getMinAngleForRadius = (radius: number): number => {
     if (radius === 0) return 0;
-    const minArcLength = NODE_WIDTH + 40;
+    const minArcLength = Math.sqrt(NODE_WIDTH ** 2 + NODE_HEIGHT ** 2) + 30;
     return minArcLength / radius;
   };
 
@@ -178,11 +172,25 @@ const calculateHybridLayout = (
     const perpX = -Math.sin(angle);
     const perpY = Math.cos(angle);
 
-    // 각 L3의 서브트리 높이 계산 (L4 자식 수 기반)
+    // 수직 전개(perpY 우세)→높이 기준, 수평 전개(perpX 우세)→너비 기준
+    const perpNodeExtent = Math.abs(perpX) * NODE_WIDTH + Math.abs(perpY) * NODE_HEIGHT;
+    const dynamicGap = Math.max(L4_SIBLING_GAP, perpNodeExtent + 20);
+    const dynamicMinGap = perpNodeExtent + 10;
+
+    // 각 L3의 서브트리 높이 계산 (L4 자식 수 기반, 2열 레이아웃 반영)
     const subtreeHeights = l3Children.map(l3 => {
       const l4Children = (childrenMap.get(l3.id) || []).filter(c => isVisible(c));
       const l4Count = expandedNodes.has(l3.id) ? l4Children.length : 0;
-      return Math.max(NODE_HEIGHT, l4Count * L4_SIBLING_GAP);
+
+      if (l4Count === 0) return perpNodeExtent;
+
+      // 2열 레이아웃: 긴 열 기준 높이 계산
+      if (l4Count > L4_COLUMN_THRESHOLD) {
+        const col1Count = Math.ceil(l4Count / 2);
+        return Math.max(perpNodeExtent, col1Count * dynamicGap);
+      }
+
+      return Math.max(perpNodeExtent, l4Count * dynamicGap);
     });
 
     // 전체 높이 계산
@@ -196,9 +204,11 @@ const calculateHybridLayout = (
       (l2Y + outY * TREE_L3_DEPTH) ** 2
     );
     const availableArc = l3Radius * angularRange;
-    const scaleFactor = availableArc > 0 && totalHeight > availableArc
+    const rawScaleFactor = availableArc > 0 && totalHeight > availableArc
       ? availableArc / totalHeight
       : 1;
+    const minScaleFactor = dynamicMinGap / dynamicGap;
+    const scaleFactor = Math.max(rawScaleFactor, minScaleFactor);
 
     let currentPerpOffset = -totalHeight * scaleFactor / 2;
 
@@ -215,20 +225,45 @@ const calculateHybridLayout = (
       // L4 자식 배치
       if (expandedNodes.has(l3.id)) {
         const l4Children = (childrenMap.get(l3.id) || []).filter(c => isVisible(c));
-        const l4Total = (l4Children.length - 1) * L4_SIBLING_GAP * scaleFactor;
+        const useGrid = l4Children.length > L4_COLUMN_THRESHOLD;
+        const effectiveGap = dynamicGap * scaleFactor;
 
-        l4Children.forEach((l4, j) => {
-          const l4PerpOffset = (j - (l4Children.length - 1) / 2) * L4_SIBLING_GAP * scaleFactor;
+        if (useGrid) {
+          // 2열 지그재그 배치
+          const col1 = l4Children.filter((_, idx) => idx % 2 === 0);
+          const col2 = l4Children.filter((_, idx) => idx % 2 === 1);
 
-          const x4 = x3 + outX * TREE_L4_DEPTH + perpX * l4PerpOffset;
-          const y4 = y3 + outY * TREE_L4_DEPTH + perpY * l4PerpOffset;
+          // 1열 (짝수 인덱스): 기본 거리
+          col1.forEach((l4, j) => {
+            const l4PerpOffset = (j - (col1.length - 1) / 2) * effectiveGap;
+            const x4 = x3 + outX * TREE_L4_DEPTH + perpX * l4PerpOffset;
+            const y4 = y3 + outY * TREE_L4_DEPTH + perpY * l4PerpOffset;
+            createNode(l4, x4, y4);
+            createEdge(l3.id, l4.id);
+          });
 
-          createNode(l4, x4, y4);
-          createEdge(l3.id, l4.id);
-        });
+          // 2열 (홀수 인덱스): 바깥 방향으로 추가 거리
+          col2.forEach((l4, j) => {
+            const l4PerpOffset = (j - (col2.length - 1) / 2) * effectiveGap;
+            const depthOffset = TREE_L4_DEPTH + L4_COLUMN_DEPTH_OFFSET;
+            const x4 = x3 + outX * depthOffset + perpX * l4PerpOffset;
+            const y4 = y3 + outY * depthOffset + perpY * l4PerpOffset;
+            createNode(l4, x4, y4);
+            createEdge(l3.id, l4.id);
+          });
+        } else {
+          // 단일 열 배치 (최소 간격 보장)
+          l4Children.forEach((l4, j) => {
+            const l4PerpOffset = (j - (l4Children.length - 1) / 2) * effectiveGap;
+            const x4 = x3 + outX * TREE_L4_DEPTH + perpX * l4PerpOffset;
+            const y4 = y3 + outY * TREE_L4_DEPTH + perpY * l4PerpOffset;
+            createNode(l4, x4, y4);
+            createEdge(l3.id, l4.id);
+          });
+        }
       }
 
-      currentPerpOffset += scaledHeight / 2 + TREE_PADDING * scaleFactor;
+      currentPerpOffset += scaledHeight / 2 + Math.max(TREE_PADDING * scaleFactor, TREE_PADDING * 0.6);
     });
   };
 
@@ -247,11 +282,8 @@ const calculateHybridLayout = (
 
     if (visibleChildren.length === 0 || !isExpanded) return;
 
-    const weights = visibleChildren.map(child => getVisibleLeafCount(child.id));
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-
     const childLevel = visibleChildren[0].level;
-    const childRadius = LEVEL_RADIUS[childLevel] || 520;
+    const childRadius = LEVEL_RADIUS[childLevel] || 900;
     const minAngle = getMinAngleForRadius(childRadius);
 
     let angleRange = endAngle - startAngle;
@@ -264,12 +296,11 @@ const calculateHybridLayout = (
       angleRange = requiredAngle;
     }
 
+    const childAngleRange = angleRange / visibleChildren.length;
+
     let currentAngle = startAngle;
 
-    visibleChildren.forEach((child, index) => {
-      const weight = weights[index];
-      let childAngleRange = (weight / totalWeight) * angleRange;
-      childAngleRange = Math.max(childAngleRange, minAngle);
+    visibleChildren.forEach((child) => {
 
       const childAngle = currentAngle + childAngleRange / 2;
 

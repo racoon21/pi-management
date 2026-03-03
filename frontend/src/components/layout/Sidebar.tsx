@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Network,
+  Upload,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -20,6 +21,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: '대시보드', path: '/' },
   { icon: Network, label: '업무 그래프', path: '/graph' },
+  { icon: Upload, label: '엑셀 업로드', path: '/upload' },
 ];
 
 export const Sidebar = () => {
