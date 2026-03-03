@@ -10,10 +10,12 @@ import ReactFlow, {
 import type { Node, Edge, NodeMouseHandler } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { TaskNode } from './TaskNode';
+import { MinDistanceEdge } from './MinDistanceEdge';
 import { useTaskStore } from '../../stores/taskStore';
 import type { TaskGraphItem, TaskLevel } from '../../types/task';
 
 const nodeTypes = { task: TaskNode };
+const edgeTypes = { minDistance: MinDistanceEdge };
 
 const levelColors: Record<TaskLevel, string> = {
   Root: '#8E72EE',
@@ -23,21 +25,25 @@ const levelColors: Record<TaskLevel, string> = {
   L4: '#E4E3EC',
 };
 
-// 레벨별 반경 설정
+// 방사형 레벨 반경 (Root, L1, L2만)
 const LEVEL_RADIUS: Record<string, number> = {
   Root: 0,
   L1: 280,
   L2: 520,
-  L3: 760,
-  L4: 1000,
 };
+
+// 계층형 트리 상수 (L3, L4)
+const TREE_L3_DEPTH = 280;
+const TREE_L4_DEPTH = 250;
+const L4_SIBLING_GAP = 85;
+const TREE_PADDING = 30;
 
 // 노드 크기
 const NODE_WIDTH = 200;
 const NODE_HEIGHT = 70;
 
-// 방사형 레이아웃 (연결선 꼬임 방지 - 부모 각도 범위 내 자식 배치)
-const calculateRadialLayout = (
+// 하이브리드 레이아웃: Root→L1→L2 방사형, L2→L3→L4 계층형
+const calculateHybridLayout = (
   tasks: TaskGraphItem[],
   expandedNodes: Set<string>,
   selectedId: string | null
@@ -45,7 +51,6 @@ const calculateRadialLayout = (
   const taskMap = new Map(tasks.map(t => [t.id, t]));
   const childrenMap = new Map<string, TaskGraphItem[]>();
 
-  // Build children map
   tasks.forEach(task => {
     if (task.parent_id) {
       const children = childrenMap.get(task.parent_id) || [];
@@ -63,7 +68,6 @@ const calculateRadialLayout = (
   const CENTER_X = 0;
   const CENTER_Y = 0;
 
-  // 보이는 노드인지 확인
   const isVisible = (task: TaskGraphItem): boolean => {
     if (task.level === 'Root') return true;
     if (!task.parent_id) return false;
@@ -72,7 +76,6 @@ const calculateRadialLayout = (
     return expandedNodes.has(task.parent_id) && isVisible(parent);
   };
 
-  // Check if nodeId is in the path to selectedId
   const isNodeInPath = (nodeId: string): boolean => {
     if (!selectedId) return false;
 
@@ -95,7 +98,6 @@ const calculateRadialLayout = (
     return checkDescendants(selectedId);
   };
 
-  // 서브트리의 보이는 잎 노드 수 계산 (각도 가중치용)
   const getVisibleLeafCount = (taskId: string): number => {
     const children = childrenMap.get(taskId) || [];
     const visibleChildren = children.filter(c => isVisible(c));
@@ -107,20 +109,13 @@ const calculateRadialLayout = (
     return visibleChildren.reduce((sum, child) => sum + getVisibleLeafCount(child.id), 0);
   };
 
-  // 특정 레벨의 반경에서 최소 각도 계산 (노드 겹침 방지)
   const getMinAngleForRadius = (radius: number): number => {
     if (radius === 0) return 0;
-    // 호의 길이 = radius * angle, 최소 호 길이 = NODE_WIDTH + padding
     const minArcLength = NODE_WIDTH + 40;
     return minArcLength / radius;
   };
 
-  // 노드 및 엣지 생성 헬퍼
-  const createNode = (
-    task: TaskGraphItem,
-    x: number,
-    y: number
-  ): void => {
+  const createNode = (task: TaskGraphItem, x: number, y: number): void => {
     const children = childrenMap.get(task.id) || [];
     const hasChildren = children.length > 0;
     const isExpanded = expandedNodes.has(task.id);
@@ -146,10 +141,7 @@ const calculateRadialLayout = (
     });
   };
 
-  const createEdge = (
-    parentId: string,
-    childId: string
-  ): void => {
+  const createEdge = (parentId: string, childId: string): void => {
     const isSelected = childId === selectedId;
     const isInPath = isNodeInPath(childId);
     const isEdgeHighlighted = isSelected || isInPath;
@@ -159,7 +151,7 @@ const calculateRadialLayout = (
       id: `${parentId}-${childId}`,
       source: parentId,
       target: childId,
-      type: 'default',
+      type: 'minDistance',
       style: {
         stroke: isEdgeHighlighted ? '#191927' : '#b0aeb8',
         strokeWidth: isEdgeHighlighted ? 2.5 : 1.5,
@@ -169,7 +161,78 @@ const calculateRadialLayout = (
     });
   };
 
-  // 재귀적으로 노드 배치 (부모의 각도 범위 내에서 자식 배치)
+  // L2 노드에서 바깥 방향으로 L3/L4를 계층형으로 배치
+  const positionL3L4Subtree = (
+    l2Id: string,
+    l2X: number,
+    l2Y: number,
+    angularRange: number
+  ): void => {
+    const l3Children = (childrenMap.get(l2Id) || []).filter(c => isVisible(c));
+    if (l3Children.length === 0 || !expandedNodes.has(l2Id)) return;
+
+    // L2에서 중심 바깥 방향 벡터
+    const angle = Math.atan2(l2Y - CENTER_Y, l2X - CENTER_X);
+    const outX = Math.cos(angle);
+    const outY = Math.sin(angle);
+    const perpX = -Math.sin(angle);
+    const perpY = Math.cos(angle);
+
+    // 각 L3의 서브트리 높이 계산 (L4 자식 수 기반)
+    const subtreeHeights = l3Children.map(l3 => {
+      const l4Children = (childrenMap.get(l3.id) || []).filter(c => isVisible(c));
+      const l4Count = expandedNodes.has(l3.id) ? l4Children.length : 0;
+      return Math.max(NODE_HEIGHT, l4Count * L4_SIBLING_GAP);
+    });
+
+    // 전체 높이 계산
+    const totalHeight = subtreeHeights.reduce((sum, h, i) => {
+      return sum + h + (i > 0 ? TREE_PADDING : 0);
+    }, 0);
+
+    // 사용 가능한 호 길이로 압축 여부 결정
+    const l3Radius = Math.sqrt(
+      (l2X + outX * TREE_L3_DEPTH) ** 2 +
+      (l2Y + outY * TREE_L3_DEPTH) ** 2
+    );
+    const availableArc = l3Radius * angularRange;
+    const scaleFactor = availableArc > 0 && totalHeight > availableArc
+      ? availableArc / totalHeight
+      : 1;
+
+    let currentPerpOffset = -totalHeight * scaleFactor / 2;
+
+    l3Children.forEach((l3, i) => {
+      const scaledHeight = subtreeHeights[i] * scaleFactor;
+      currentPerpOffset += scaledHeight / 2;
+
+      const x3 = l2X + outX * TREE_L3_DEPTH + perpX * currentPerpOffset;
+      const y3 = l2Y + outY * TREE_L3_DEPTH + perpY * currentPerpOffset;
+
+      createNode(l3, x3, y3);
+      createEdge(l2Id, l3.id);
+
+      // L4 자식 배치
+      if (expandedNodes.has(l3.id)) {
+        const l4Children = (childrenMap.get(l3.id) || []).filter(c => isVisible(c));
+        const l4Total = (l4Children.length - 1) * L4_SIBLING_GAP * scaleFactor;
+
+        l4Children.forEach((l4, j) => {
+          const l4PerpOffset = (j - (l4Children.length - 1) / 2) * L4_SIBLING_GAP * scaleFactor;
+
+          const x4 = x3 + outX * TREE_L4_DEPTH + perpX * l4PerpOffset;
+          const y4 = y3 + outY * TREE_L4_DEPTH + perpY * l4PerpOffset;
+
+          createNode(l4, x4, y4);
+          createEdge(l3.id, l4.id);
+        });
+      }
+
+      currentPerpOffset += scaledHeight / 2 + TREE_PADDING * scaleFactor;
+    });
+  };
+
+  // 방사형 배치 (Root → L1 → L2)
   const positionSubtree = (
     taskId: string,
     startAngle: number,
@@ -184,20 +247,16 @@ const calculateRadialLayout = (
 
     if (visibleChildren.length === 0 || !isExpanded) return;
 
-    // 각 자식의 가중치 (서브트리 크기 기반)
     const weights = visibleChildren.map(child => getVisibleLeafCount(child.id));
     const totalWeight = weights.reduce((a, b) => a + b, 0);
 
-    // 자식 레벨의 반경
     const childLevel = visibleChildren[0].level;
-    const childRadius = LEVEL_RADIUS[childLevel] || 400;
+    const childRadius = LEVEL_RADIUS[childLevel] || 520;
     const minAngle = getMinAngleForRadius(childRadius);
 
-    // 필요한 총 각도 계산
     let angleRange = endAngle - startAngle;
     const requiredAngle = minAngle * visibleChildren.length;
 
-    // 필요한 각도가 부족하면 확장
     if (requiredAngle > angleRange) {
       const center = (startAngle + endAngle) / 2;
       startAngle = center - requiredAngle / 2;
@@ -208,36 +267,33 @@ const calculateRadialLayout = (
     let currentAngle = startAngle;
 
     visibleChildren.forEach((child, index) => {
-      // 가중치에 따른 각도 할당
       const weight = weights[index];
       let childAngleRange = (weight / totalWeight) * angleRange;
       childAngleRange = Math.max(childAngleRange, minAngle);
 
       const childAngle = currentAngle + childAngleRange / 2;
 
-      // 자식 위치 계산
       const childX = CENTER_X + childRadius * Math.cos(childAngle);
       const childY = CENTER_Y + childRadius * Math.sin(childAngle);
 
-      // 노드 및 엣지 생성
       createNode(child, childX, childY);
       createEdge(taskId, child.id);
 
-      // 재귀적으로 손자 노드 배치 (현재 자식의 각도 범위 내에서)
-      positionSubtree(
-        child.id,
-        currentAngle,
-        currentAngle + childAngleRange
-      );
+      if (child.level === 'L2') {
+        // L2 → L3/L4: 계층형 트리로 전환
+        positionL3L4Subtree(child.id, childX, childY, childAngleRange);
+      } else {
+        // Root → L1, L1 → L2: 방사형 계속
+        positionSubtree(child.id, currentAngle, currentAngle + childAngleRange);
+      }
 
       currentAngle += childAngleRange;
     });
   };
 
-  // Root 노드 배치
+  // Root 배치
   createNode(root, CENTER_X, CENTER_Y);
 
-  // Root가 확장되어 있으면 자식들 배치 (전체 원 사용: -π ~ π)
   if (expandedNodes.has(root.id)) {
     positionSubtree(root.id, -Math.PI, Math.PI);
   }
@@ -248,11 +304,9 @@ const calculateRadialLayout = (
 export const TaskGraph = () => {
   const { tasks, selectedTaskId, selectTask, toggleExpand, expandedNodes, filters } = useTaskStore();
 
-  // Filter tasks
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
 
-    // Apply organization filter
     if (filters.organization) {
       const orgTasks = result.filter(t => t.organization === filters.organization);
       const includedIds = new Set<string>();
@@ -269,7 +323,6 @@ export const TaskGraph = () => {
       result = result.filter(t => includedIds.has(t.id));
     }
 
-    // Apply level filter
     if (filters.level) {
       const levelTasks = result.filter(t => t.level === filters.level);
       const includedIds = new Set<string>();
@@ -286,7 +339,6 @@ export const TaskGraph = () => {
       result = result.filter(t => includedIds.has(t.id));
     }
 
-    // Apply AI filter
     if (filters.isAiUtilized !== null) {
       const aiTasks = result.filter(t => t.is_ai_utilized === filters.isAiUtilized);
       const includedIds = new Set<string>();
@@ -306,21 +358,18 @@ export const TaskGraph = () => {
     return result;
   }, [tasks, filters]);
 
-  // Calculate layout
   const layoutedElements = useMemo(() => {
-    return calculateRadialLayout(filteredTasks, expandedNodes, selectedTaskId);
+    return calculateHybridLayout(filteredTasks, expandedNodes, selectedTaskId);
   }, [filteredTasks, expandedNodes, selectedTaskId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedElements.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedElements.edges);
 
-  // Update when layout changes
   useEffect(() => {
     setNodes(layoutedElements.nodes);
     setEdges(layoutedElements.edges);
   }, [layoutedElements, setNodes, setEdges]);
 
-  // Handle node click - toggle expand and select
   const handleNodeClick: NodeMouseHandler = useCallback(
     (_, node) => {
       toggleExpand(node.id);
@@ -329,7 +378,6 @@ export const TaskGraph = () => {
     [toggleExpand, selectTask]
   );
 
-  // Handle pane click - deselect
   const handlePaneClick = useCallback(() => {
     selectTask(null);
   }, [selectTask]);
@@ -344,6 +392,7 @@ export const TaskGraph = () => {
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}

@@ -65,12 +65,12 @@ export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
         ${isBlurred ? 'opacity-30 blur-[1px] scale-95' : 'opacity-100 blur-0 scale-100'}
       `}
     >
-      {/* Top Handle */}
+      {/* Target Handle (invisible - custom edge calculates path) */}
       {data.level !== 'Root' && (
         <Handle
           type="target"
           position={Position.Left}
-          className="!w-2 !h-2 !bg-gray-400 !border-0"
+          className="!w-1 !h-1 !opacity-0 !border-0"
         />
       )}
 
@@ -122,12 +122,12 @@ export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
         </div>
       </div>
 
-      {/* Bottom Handle */}
+      {/* Source Handle (invisible - custom edge calculates path) */}
       {data.level !== 'L4' && (
         <Handle
           type="source"
           position={Position.Right}
-          className="!w-2 !h-2 !bg-gray-400 !border-0"
+          className="!w-1 !h-1 !opacity-0 !border-0"
         />
       )}
     </div>

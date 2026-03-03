@@ -18,7 +18,9 @@ services:
       retries: 5
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile_dev
     environment:
       DATABASE_URL: postgresql+asyncpg://pi_user:pi_password@db:5432/pi_management
       SECRET_KEY: your-super-secret-key-change-in-production
