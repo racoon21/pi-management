@@ -1,6 +1,6 @@
 import { memo } from 'react';
-import { BaseEdge, useInternalNode } from 'reactflow';
-import type { EdgeProps } from 'reactflow';
+import { BaseEdge, useStore } from 'reactflow';
+import type { EdgeProps, ReactFlowState } from 'reactflow';
 
 const NODE_WIDTH = 200;
 const NODE_HEIGHT = 70;
@@ -41,18 +41,18 @@ export const MinDistanceEdge = memo(({
   style,
   animated,
 }: EdgeProps) => {
-  const sourceNode = useInternalNode(source);
-  const targetNode = useInternalNode(target);
+  const sourceNode = useStore((s: ReactFlowState) => s.nodeInternals.get(source));
+  const targetNode = useStore((s: ReactFlowState) => s.nodeInternals.get(target));
 
   if (!sourceNode || !targetNode) return null;
 
-  const sW = sourceNode.measured?.width ?? NODE_WIDTH;
-  const sH = sourceNode.measured?.height ?? NODE_HEIGHT;
-  const tW = targetNode.measured?.width ?? NODE_WIDTH;
-  const tH = targetNode.measured?.height ?? NODE_HEIGHT;
+  const sW = sourceNode.width ?? NODE_WIDTH;
+  const sH = sourceNode.height ?? NODE_HEIGHT;
+  const tW = targetNode.width ?? NODE_WIDTH;
+  const tH = targetNode.height ?? NODE_HEIGHT;
 
-  const sPos = sourceNode.internals.positionAbsolute;
-  const tPos = targetNode.internals.positionAbsolute;
+  const sPos = sourceNode.positionAbsolute ?? sourceNode.position;
+  const tPos = targetNode.positionAbsolute ?? targetNode.position;
 
   const tCx = tPos.x + tW / 2;
   const tCy = tPos.y + tH / 2;
