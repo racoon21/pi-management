@@ -64,12 +64,14 @@ export const MinDistanceEdge = memo(({
 
   const path = `M ${sPoint.x} ${sPoint.y} L ${tPoint.x} ${tPoint.y}`;
 
+  const edgeStyle = animated
+    ? { ...style, strokeDasharray: 5, animation: 'dashdraw 0.5s linear infinite' }
+    : style;
+
   return (
     <BaseEdge
-      id={id}
       path={path}
-      style={style}
-      className={animated ? 'react-flow__edge-path animated' : undefined}
+      style={edgeStyle}
     />
   );
 });
