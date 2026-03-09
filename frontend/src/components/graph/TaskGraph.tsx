@@ -45,7 +45,6 @@ const NODE_HEIGHT = 70;
 // L4 2열 배치 상수
 const L4_COLUMN_THRESHOLD = 4;
 const L4_COLUMN_DEPTH_OFFSET = 230;
-const MIN_L4_EFFECTIVE_GAP = NODE_HEIGHT + 15;
 
 // 하이브리드 레이아웃: Root→L1→L2 방사형, L2→L3→L4 계층형
 const calculateHybridLayout = (

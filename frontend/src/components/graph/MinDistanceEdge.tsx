@@ -35,7 +35,6 @@ function closestPointOnRect(
 }
 
 export const MinDistanceEdge = memo(({
-  id,
   source,
   target,
   style,
