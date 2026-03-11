@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { TaskGraphItem, TaskDetail, TaskHistory } from '../types/task';
+import type { TaskGraphItem, TaskDetail, TaskHistory, OrganizationType } from '../types/task';
 
 interface TaskFilters {
   organization?: string;
@@ -12,6 +12,7 @@ interface TaskCreateRequest {
   level: string;
   name: string;
   organization: string;
+  organization_type?: OrganizationType | null;
   team: string;
   manager_name: string;
   manager_id: string;
@@ -22,6 +23,7 @@ interface TaskCreateRequest {
 interface TaskUpdateRequest {
   name?: string;
   organization?: string;
+  organization_type?: OrganizationType | null;
   team?: string;
   manager_name?: string;
   manager_id?: string;
@@ -60,5 +62,10 @@ export const taskApi = {
 
   getHistory: async (taskId: string): Promise<TaskHistory[]> => {
     return apiClient.get<TaskHistory[]>(`/tasks/${taskId}/history`);
+  },
+
+  /** [IMP-07] 하위 노드 조회 (cascade 삭제 확인용) */
+  getDescendants: async (taskId: string): Promise<TaskGraphItem[]> => {
+    return apiClient.get<TaskGraphItem[]>(`/tasks/${taskId}/descendants`);
   },
 };

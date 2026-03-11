@@ -97,7 +97,8 @@ export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
             </span>
           )}
         </div>
-        {data.is_ai_utilized && (
+        {/* [IMP-06] L4 노드에서만 AI 배지 표시 */}
+        {data.level === 'L4' && data.is_ai_utilized && (
           <div className="flex items-center gap-0.5">
             <Sparkles size={10} className="text-[#7952B3]" />
             <span className={`text-[9px] ${styles.text} opacity-80`}>AI</span>
