@@ -714,3 +714,40 @@ npm run build    # tsc -b && vite build → dist/
 - 태스크 삭제는 **Soft Delete** (deleted_at 필드 사용)
 - 태스크 수정 시 반드시 **이력 스냅샷** 생성 필요
 - 필터링 시 **조상 노드 체인** 자동 유지 로직 필수
+
+---
+
+## 15. Admin 브랜치 작업 메모
+
+### 2026-03-16 - `codex/feature/admin-route/navigation-shell`
+
+**목적**
+- 같은 로그인, 같은 포털 구조 안에서 `admin` 계정에게만 admin 메뉴와 admin placeholder 페이지를 노출하는 navigation shell 구현
+
+**변경 파일**
+- `frontend/src/App.tsx`
+- `frontend/src/components/AdminRoute.tsx`
+- `frontend/src/components/layout/Sidebar.tsx`
+- `frontend/src/admin/pages/AdminPageTemplate.tsx`
+- `frontend/src/admin/pages/AdminDashboardPage.tsx`
+- `frontend/src/admin/pages/AdminUsersPage.tsx`
+- `frontend/src/admin/pages/AdminLogsPage.tsx`
+- `frontend/src/admin/pages/AdminRequestsPage.tsx`
+- `frontend/src/admin/pages/index.ts`
+
+**구현 내용**
+- `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` 라우트 추가
+- `AdminRoute` 추가: `admin` role만 admin 경로 접근 가능
+- 사이드바에 `admin` 계정 전용 메뉴 섹션 추가
+- admin placeholder 페이지 4종 추가
+- 기존 user 페이지와 기존 user 메뉴 동작은 유지
+
+**검증**
+- `frontend`에서 `npm ci` 실행 후 `npm run build` 성공
+- 결과: navigation shell 변경 기준 프론트 빌드 정상 통과
+
+**주의**
+- 이번 브랜치에서는 백엔드 `/api/admin/*` 추가 없음
+- DB 변경 없음
+- 기존 user API 권한 로직 변경 없음
+- placeholder 화면만 추가한 상태이며 실제 데이터 연동은 다음 브랜치에서 진행
