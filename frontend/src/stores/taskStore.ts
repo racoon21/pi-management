@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import type { TaskGraphItem, TaskDetail } from '../types/task';
+import type { TaskGraphItem, TaskDetail, OrganizationType } from '../types/task';
 import { taskApi } from '../api';
 
 interface TaskCreateData {
   parent_id: string | null;
   name: string;
   organization: string;
+  organization_type?: OrganizationType | null;
   team?: string | null;
   manager_name?: string | null;
   manager_id?: string | null;
@@ -16,6 +17,7 @@ interface TaskCreateData {
 interface TaskUpdateData {
   name?: string;
   organization?: string;
+  organization_type?: OrganizationType | null;
   team?: string | null;
   manager_name?: string | null;
   manager_id?: string | null;
@@ -35,6 +37,8 @@ interface TaskState {
     level: string | null;
     isAiUtilized: boolean | null;
   };
+  /** [IMP-02] L1 포커스 뷰 */
+  focusedL1Id: string | null;
 
   // Actions
   fetchTasks: () => Promise<void>;
@@ -44,6 +48,7 @@ interface TaskState {
   expandAll: () => void;
   collapseAll: () => void;
   setFilters: (filters: Partial<TaskState['filters']>) => void;
+  setFocusedL1: (id: string | null) => void;
   createTask: (data: TaskCreateData) => Promise<TaskDetail | null>;
   updateTask: (taskId: string, updates: TaskUpdateData) => Promise<TaskDetail | null>;
   deleteTask: (taskId: string) => Promise<boolean>;
@@ -61,6 +66,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     level: null,
     isAiUtilized: null,
   },
+  focusedL1Id: null,
 
   fetchTasks: async () => {
     set({ isLoading: true, error: null });
@@ -93,7 +99,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       set({ selectedTask });
     } catch (error) {
       console.error('Failed to fetch task detail:', error);
-      // Task 상세 조회 실패 시 tasks 배열에서 찾아서 대체
       const task = get().tasks.find(t => t.id === taskId);
       if (task) {
         set({
@@ -160,6 +165,33 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     filters: { ...state.filters, ...filters },
   })),
 
+  /** [IMP-02] L1 포커스 설정 시 하위 노드 자동 확장 */
+  setFocusedL1: (id) => {
+    if (!id) {
+      set({ focusedL1Id: null });
+      return;
+    }
+    const { tasks } = get();
+    // 해당 L1과 모든 하위 노드를 expandedNodes에 추가
+    const idsToExpand = new Set<string>();
+    const rootTask = tasks.find(t => t.level === 'Root');
+    if (rootTask) idsToExpand.add(rootTask.id);
+    idsToExpand.add(id);
+
+    // BFS로 하위 노드 수집
+    const queue = [id];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const children = tasks.filter(t => t.parent_id === current);
+      for (const child of children) {
+        idsToExpand.add(child.id);
+        queue.push(child.id);
+      }
+    }
+
+    set({ focusedL1Id: id, expandedNodes: idsToExpand });
+  },
+
   createTask: async (data) => {
     try {
       const newTask = await taskApi.createTask({
@@ -167,6 +199,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         level: '', // 백엔드에서 자동 결정
         name: data.name,
         organization: data.organization,
+        organization_type: data.organization_type,
         team: data.team || '',
         manager_name: data.manager_name || '',
         manager_id: data.manager_id || '',
@@ -174,9 +207,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         is_ai_utilized: data.is_ai_utilized || false,
       });
 
-      // 서버에서 최신 데이터 다시 가져오기
       await get().fetchTasks();
-
       return newTask;
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -189,6 +220,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const updatedTask = await taskApi.updateTask(taskId, {
         name: updates.name,
         organization: updates.organization,
+        organization_type: updates.organization_type,
         team: updates.team || undefined,
         manager_name: updates.manager_name || undefined,
         manager_id: updates.manager_id || undefined,
@@ -196,10 +228,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         is_ai_utilized: updates.is_ai_utilized,
       });
 
-      // 서버에서 최신 데이터 다시 가져오기
       await get().fetchTasks();
 
-      // 선택된 태스크도 업데이트
       if (get().selectedTaskId === taskId) {
         set({ selectedTask: updatedTask });
       }
@@ -215,14 +245,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       await taskApi.deleteTask(taskId);
 
-      // 선택 해제
       if (get().selectedTaskId === taskId) {
         set({ selectedTaskId: null, selectedTask: null });
       }
 
-      // 서버에서 최신 데이터 다시 가져오기
       await get().fetchTasks();
-
       return true;
     } catch (error) {
       console.error('Failed to delete task:', error);

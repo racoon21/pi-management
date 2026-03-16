@@ -37,8 +37,29 @@ async def get_task_by_id(db: AsyncSession, task_id: UUID) -> Task | None:
     return result.scalar_one_or_none()
 
 
+async def get_descendants(db: AsyncSession, task_id: UUID) -> list[Task]:
+    """[IMP-07] 재귀적으로 모든 하위 노드를 조회"""
+    result = await db.execute(
+        select(Task).where(Task.deleted_at.is_(None))
+    )
+    all_tasks = list(result.scalars().all())
+
+    children_map: dict[UUID, list[Task]] = {}
+    for t in all_tasks:
+        if t.parent_id:
+            children_map.setdefault(t.parent_id, []).append(t)
+
+    descendants: list[Task] = []
+    queue = list(children_map.get(task_id, []))
+    while queue:
+        node = queue.pop(0)
+        descendants.append(node)
+        queue.extend(children_map.get(node.id, []))
+
+    return descendants
+
+
 async def create_task(db: AsyncSession, data: TaskCreate, user_id: UUID | None) -> Task:
-    # 부모가 있으면 레벨 자동 결정
     if data.parent_id:
         parent = await get_task_by_id(db, data.parent_id)
         if not parent:
@@ -49,22 +70,30 @@ async def create_task(db: AsyncSession, data: TaskCreate, user_id: UUID | None) 
     else:
         level = "Root"
 
+    # [IMP-05] L1: 업무명 = 조직명 동일 규칙
+    organization = data.organization
+    if level == "L1":
+        organization = data.name
+
+    # [IMP-06] L4 외 레벨은 AI 활용 강제 false
+    is_ai_utilized = data.is_ai_utilized if level == "L4" else False
+
     task = Task(
         parent_id=data.parent_id,
         level=level,
         name=data.name,
-        organization=data.organization,
+        organization=organization,
+        organization_type=data.organization_type,
         team=data.team,
         manager_name=data.manager_name,
         manager_id=data.manager_id,
         keywords=data.keywords or [],
-        is_ai_utilized=data.is_ai_utilized,
+        is_ai_utilized=is_ai_utilized,
         created_by=user_id,
         updated_by=user_id,
     )
     db.add(task)
 
-    # 이력 저장
     history = TaskHistory(
         task_id=task.id,
         snapshot=_task_to_snapshot(task),
@@ -84,7 +113,6 @@ async def update_task(db: AsyncSession, task_id: UUID, data: TaskUpdate, user_id
     if not task:
         raise ValueError("Task not found")
 
-    # 현재 상태를 히스토리에 저장
     history = TaskHistory(
         task_id=task.id,
         snapshot=_task_to_snapshot(task),
@@ -94,8 +122,16 @@ async def update_task(db: AsyncSession, task_id: UUID, data: TaskUpdate, user_id
     )
     db.add(history)
 
-    # 업데이트
     update_data = data.model_dump(exclude_unset=True)
+
+    # [IMP-05] L1: name 변경 시 organization도 동기화
+    if task.level == "L1" and "name" in update_data:
+        update_data["organization"] = update_data["name"]
+
+    # [IMP-06] L4 외 레벨은 AI 활용 강제 false
+    if task.level != "L4" and "is_ai_utilized" in update_data:
+        update_data["is_ai_utilized"] = False
+
     for key, value in update_data.items():
         setattr(task, key, value)
 
@@ -109,30 +145,31 @@ async def update_task(db: AsyncSession, task_id: UUID, data: TaskUpdate, user_id
 
 
 async def delete_task(db: AsyncSession, task_id: UUID, user_id: UUID | None) -> bool:
+    """[IMP-07] Cascade soft delete: 상위 + 모든 하위 노드 삭제"""
     task = await get_task_by_id(db, task_id)
     if not task:
         raise ValueError("Task not found")
 
-    # 자식 노드 확인
-    result = await db.execute(
-        select(Task).where(Task.parent_id == task_id, Task.deleted_at.is_(None))
-    )
-    children = result.scalars().all()
-    if children:
-        raise ValueError("Cannot delete task with children")
+    if task.level == "Root":
+        raise ValueError("Cannot delete Root task")
 
-    # 히스토리 저장
-    history = TaskHistory(
-        task_id=task.id,
-        snapshot=_task_to_snapshot(task),
-        version=task.version,
-        change_type="DELETE",
-        changed_by=user_id,
-    )
-    db.add(history)
+    descendants = await get_descendants(db, task_id)
+    now = datetime.utcnow()
 
-    # Soft delete
-    task.deleted_at = datetime.utcnow()
+    # 리프부터 삭제 (역순)
+    for desc in reversed(descendants):
+        db.add(TaskHistory(
+            task_id=desc.id, snapshot=_task_to_snapshot(desc),
+            version=desc.version, change_type="DELETE", changed_by=user_id,
+        ))
+        desc.deleted_at = now
+
+    db.add(TaskHistory(
+        task_id=task.id, snapshot=_task_to_snapshot(task),
+        version=task.version, change_type="DELETE", changed_by=user_id,
+    ))
+    task.deleted_at = now
+
     await db.commit()
     return True
 
@@ -145,25 +182,16 @@ async def get_task_histories(db: AsyncSession, task_id: UUID) -> list[TaskHistor
     )
     histories = list(result.scalars().all())
 
-    # 모든 changed_by ID 수집 후 User 정보 조회
     user_ids = [h.changed_by for h in histories if h.changed_by]
     user_map = {}
     if user_ids:
-        user_result = await db.execute(
-            select(User).where(User.id.in_(user_ids))
-        )
-        users = user_result.scalars().all()
-        user_map = {u.id: u.name for u in users}
+        user_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+        user_map = {u.id: u.name for u in user_result.scalars().all()}
 
-    # 히스토리에 사용자 이름 매핑
     return [
         TaskHistoryWithUser(
-            id=h.id,
-            task_id=h.task_id,
-            snapshot=h.snapshot,
-            version=h.version,
-            change_type=h.change_type,
-            changed_by=h.changed_by,
+            id=h.id, task_id=h.task_id, snapshot=h.snapshot, version=h.version,
+            change_type=h.change_type, changed_by=h.changed_by,
             changed_by_name=user_map.get(h.changed_by) if h.changed_by else None,
             changed_at=h.changed_at,
         )
@@ -177,6 +205,7 @@ def _task_to_snapshot(task: Task) -> dict:
         "level": task.level,
         "name": task.name,
         "organization": task.organization,
+        "organization_type": task.organization_type,
         "team": task.team,
         "manager_name": task.manager_name,
         "manager_id": task.manager_id,

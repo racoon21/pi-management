@@ -66,6 +66,19 @@ async def delete_task(task_id: UUID, db: DbSession, current_user: CurrentUser):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.get("/{task_id}/descendants", response_model=ApiResponse[list[TaskGraphItem]])
+async def get_descendants(task_id: UUID, db: DbSession, current_user: CurrentUser):
+    """[IMP-07] 하위 노드 목록 조회 (cascade 삭제 전 확인용)"""
+    task = await task_service.get_task_by_id(db, task_id)
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    descendants = await task_service.get_descendants(db, task_id)
+    return ApiResponse(
+        success=True,
+        data=[TaskGraphItem.model_validate(d) for d in descendants],
+    )
+
+
 @router.get("/{task_id}/history", response_model=ApiResponse[list[TaskHistoryResponse]])
 async def get_history(task_id: UUID, db: DbSession, current_user: CurrentUser):  # 인증 필수
     histories = await task_service.get_task_histories(db, task_id)

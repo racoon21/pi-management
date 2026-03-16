@@ -1,29 +1,22 @@
 FROM python:3.11-slim
 
-# 보안: 비-루트 사용자 생성
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
-
 WORKDIR /app
 
 # 의존성 먼저 설치 (캐싱 최적화)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 소스 복사
+# 소스 복사 (docker-compose에서 volume mount로 덮어씌워짐)
 COPY . .
 
-# 소유권 변경
-RUN chown -R appuser:appgroup /app
+# entrypoint 스크립트 실행 권한
+RUN chmod +x /app/entrypoint_dev.sh 2>/dev/null || true
 
-# 비-루트 사용자로 전환
-USER appuser
+# 개발 환경 기본값
+ENV ENVIRONMENT=development
+ENV DEBUG=true
 
-# 환경변수 (기본값)
-ENV ENVIRONMENT=production
-ENV DEBUG=false
-
-# 포트 노출
 EXPOSE 8000
 
-# 프로덕션에서는 --reload 제거
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# 개발 서버: DB 초기화 + hot-reload
+CMD ["bash", "/app/entrypoint_dev.sh"]

@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Filter, RefreshCw, Sparkles, Maximize2, Minimize2 } from 'lucide-react';
+import { Filter, RefreshCw, Sparkles, Maximize2, Minimize2, Focus } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTaskStore } from '../../stores/taskStore';
 import { Button } from '../shared/Button';
 
 export const FilterBar = () => {
-  const { tasks, filters, setFilters, expandAll, collapseAll } = useTaskStore();
+  const { tasks, filters, setFilters, expandAll, collapseAll, focusedL1Id, setFocusedL1 } = useTaskStore();
   const [showFilters, setShowFilters] = useState(false);
 
   // Get unique organizations from tasks
@@ -16,6 +16,16 @@ export const FilterBar = () => {
     });
     return Array.from(orgs).sort();
   }, [tasks]);
+
+  // [IMP-02] L1 노드 목록
+  const l1Tasks = useMemo(() => {
+    return tasks.filter(t => t.level === 'L1').sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
+
+  const focusedL1Name = useMemo(() => {
+    if (!focusedL1Id) return null;
+    return tasks.find(t => t.id === focusedL1Id)?.name || null;
+  }, [tasks, focusedL1Id]);
 
   const levels = ['L1', 'L2', 'L3', 'L4'];
 
@@ -45,6 +55,20 @@ export const FilterBar = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* [IMP-02] L1 포커스 드롭다운 */}
+          <div className="flex items-center gap-1">
+            <select
+              value={focusedL1Id || ''}
+              onChange={(e) => setFocusedL1(e.target.value || null)}
+              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7952B3] min-w-[140px]"
+            >
+              <option value="">전체 L1 보기</option>
+              {l1Tasks.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Expand/Collapse Buttons */}
           <div className="flex items-center gap-1">
             <Button
@@ -83,6 +107,22 @@ export const FilterBar = () => {
           </Button>
         </div>
       </div>
+
+      {/* [IMP-02] L1 포커스 배너 */}
+      {focusedL1Id && focusedL1Name && (
+        <div className="px-6 py-2 bg-[#7952B3]/10 border-t border-[#7952B3]/20 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-[#7952B3]">
+            <Focus size={14} />
+            <span className="font-medium">📌 {focusedL1Name} 하위 업무 보기</span>
+          </div>
+          <button
+            onClick={() => setFocusedL1(null)}
+            className="text-xs text-[#7952B3] hover:text-[#5a3d8a] font-medium px-2 py-1 rounded hover:bg-[#7952B3]/10 transition-colors"
+          >
+            전체 보기
+          </button>
+        </div>
+      )}
 
       {/* Filter Panel */}
       {showFilters && (

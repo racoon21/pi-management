@@ -332,10 +332,31 @@ const calculateHybridLayout = (
 };
 
 export const TaskGraph = () => {
-  const { tasks, selectedTaskId, selectTask, toggleExpand, expandedNodes, filters } = useTaskStore();
+  const { tasks, selectedTaskId, selectTask, toggleExpand, expandedNodes, filters, focusedL1Id } = useTaskStore();
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
+
+    // [IMP-02] L1 포커스 필터링: Root + 해당 L1 + 모든 하위 노드만 표시
+    if (focusedL1Id) {
+      const includedIds = new Set<string>();
+      // Root 노드 포함
+      const root = result.find(t => t.level === 'Root');
+      if (root) includedIds.add(root.id);
+      // 해당 L1 노드 포함
+      includedIds.add(focusedL1Id);
+      // BFS로 모든 하위 노드 수집
+      const queue = [focusedL1Id];
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        const children = result.filter(t => t.parent_id === currentId);
+        for (const child of children) {
+          includedIds.add(child.id);
+          queue.push(child.id);
+        }
+      }
+      result = result.filter(t => includedIds.has(t.id));
+    }
 
     if (filters.organization) {
       const orgTasks = result.filter(t => t.organization === filters.organization);
@@ -386,7 +407,7 @@ export const TaskGraph = () => {
     }
 
     return result;
-  }, [tasks, filters]);
+  }, [tasks, filters, focusedL1Id]);
 
   const layoutedElements = useMemo(() => {
     return calculateHybridLayout(filteredTasks, expandedNodes, selectedTaskId);

@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from io import BytesIO
 from uuid import UUID
@@ -142,16 +143,17 @@ async def diff_tasks(db: AsyncSession, parsed: ParsedExcel) -> DiffResult:
     )
     all_tasks = list(all_tasks_result.scalars().all())
 
-    # parent_id + name → Task 매핑
+    # [IMP-08] parent_id + normalized_name → Task 매핑 (띄어쓰기 제외 비교)
     task_by_parent_name: dict[tuple[UUID | None, str], Task] = {}
     for t in all_tasks:
-        task_by_parent_name[(t.parent_id, t.name)] = t
+        normalized = _normalize_name(t.name)
+        task_by_parent_name[(t.parent_id, normalized)] = t
 
     hierarchy = build_hierarchy(parsed)
     stats = {"new": 0, "existing": 0, "total": 0}
 
     def diff_node(node: HierarchyNode, parent_id: UUID | None) -> DiffNode:
-        existing = task_by_parent_name.get((parent_id, node.name))
+        existing = task_by_parent_name.get((parent_id, _normalize_name(node.name)))
         status = "existing" if existing else "new"
         stats[status] += 1
         stats["total"] += 1
@@ -251,15 +253,16 @@ async def _find_or_create(
     organization: str,
     user_id: UUID,
 ) -> tuple[Task, bool]:
-    """이름과 부모 ID로 기존 태스크를 찾거나 새로 생성."""
+    """[IMP-08] 이름과 부모 ID로 기존 태스크를 찾거나 새로 생성 (띄어쓰기 제외 비교)."""
     result = await db.execute(
         select(Task).where(
             Task.parent_id == parent_id,
-            Task.name == name,
             Task.deleted_at.is_(None),
         )
     )
-    existing = result.scalar_one_or_none()
+    all_children = list(result.scalars().all())
+    normalized_name = _normalize_name(name)
+    existing = next((t for t in all_children if _normalize_name(t.name) == normalized_name), None)
     if existing:
         return existing, False
 
@@ -287,3 +290,8 @@ def _create_history(db: AsyncSession, task: Task, user_id: UUID) -> None:
         changed_by=user_id,
     )
     db.add(history)
+
+
+def _normalize_name(name: str) -> str:
+    """[IMP-08] 비교용 정규화: 모든 공백 제거"""
+    return re.sub(r"\s+", "", name.strip())

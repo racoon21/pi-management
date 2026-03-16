@@ -6,9 +6,11 @@ import { Badge } from '../shared/Badge';
 import { useTaskStore } from '../../stores/taskStore';
 import { useModalStore } from '../../stores/modalStore';
 import { taskApi } from '../../api';
-import type { TaskLevel, TaskHistory } from '../../types/task';
+import type { TaskLevel, TaskHistory, OrganizationType } from '../../types/task';
 import { Edit, Save, X, User, Building, Tag, Calendar, Sparkles, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const ORG_TYPES: OrganizationType[] = ['본부', '실', '담당', '팀'];
 
 const NEXT_LEVEL: Record<TaskLevel, TaskLevel | null> = {
   Root: 'L1',
@@ -28,6 +30,7 @@ export const TaskFormModal = () => {
   const [formData, setFormData] = useState({
     name: '',
     organization: '',
+    organization_type: '' as string,
     team: '',
     manager_name: '',
     manager_id: '',
@@ -53,11 +56,18 @@ export const TaskFormModal = () => {
     }
   }, [isOpen, type, data?.taskId, activeTab]);
 
+  // [IMP-05] 생성 시 새 노드의 레벨 계산
+  const newLevel = parentTask ? NEXT_LEVEL[parentTask.level as TaskLevel] : null;
+  const isNewL1 = newLevel === 'L1';
+  // [IMP-06] L4일 때만 AI 체크박스 표시
+  const isNewL4 = newLevel === 'L4';
+
   useEffect(() => {
     if (isOpen && type === 'create' && parentTask) {
       setFormData({
         name: '',
         organization: parentTask.organization,
+        organization_type: parentTask.organization_type || '',
         team: parentTask.team || '',
         manager_name: '',
         manager_id: '',
@@ -69,6 +79,7 @@ export const TaskFormModal = () => {
       setFormData({
         name: selectedTask.name,
         organization: selectedTask.organization,
+        organization_type: selectedTask.organization_type || '',
         team: selectedTask.team || '',
         manager_name: selectedTask.manager_name || '',
         manager_id: selectedTask.manager_id || '',
@@ -81,6 +92,7 @@ export const TaskFormModal = () => {
       setFormData({
         name: '',
         organization: '',
+        organization_type: '',
         team: '',
         manager_name: '',
         manager_id: '',
@@ -115,12 +127,15 @@ export const TaskFormModal = () => {
         await createTask({
           parent_id: data.parentId,
           name: formData.name,
-          organization: formData.organization,
+          // [IMP-05] L1이면 조직명 = 업무명
+          organization: isNewL1 ? formData.name : formData.organization,
+          organization_type: (formData.organization_type || null) as OrganizationType | null,
           team: formData.team || null,
           manager_name: formData.manager_name || null,
           manager_id: formData.manager_id || null,
           keywords: formData.keywords.split(',').map(k => k.trim()).filter(Boolean),
-          is_ai_utilized: formData.is_ai_utilized,
+          // [IMP-06] L4만 AI 활용 설정 가능
+          is_ai_utilized: isNewL4 ? formData.is_ai_utilized : false,
         });
 
         toast.success('업무가 추가되었습니다');
@@ -129,6 +144,7 @@ export const TaskFormModal = () => {
         await updateTask(data.taskId, {
           name: formData.name,
           organization: formData.organization,
+          organization_type: (formData.organization_type || null) as OrganizationType | null,
           team: formData.team || null,
           manager_name: formData.manager_name || null,
           manager_id: formData.manager_id || null,
@@ -176,17 +192,37 @@ export const TaskFormModal = () => {
           <Input
             label="업무명 *"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => setFormData({
+              ...formData,
+              name: e.target.value,
+              // [IMP-05] L1이면 조직명 자동 동기화
+              ...(isNewL1 ? { organization: e.target.value } : {}),
+            })}
             placeholder="업무명을 입력하세요"
             required
           />
 
+          {/* [IMP-04] 조직 단위 드롭다운 */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">조직 단위</label>
+            <select
+              value={formData.organization_type}
+              onChange={(e) => setFormData({ ...formData, organization_type: e.target.value })}
+              className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7952B3]"
+            >
+              <option value="">선택 없음</option>
+              {ORG_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
+            {/* [IMP-05] L1이면 조직명 읽기전용 */}
             <Input
               label="조직"
-              value={formData.organization}
+              value={isNewL1 ? formData.name : formData.organization}
               onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
               placeholder="조직"
+              disabled={isNewL1}
             />
             <Input
               label="팀"
@@ -218,18 +254,21 @@ export const TaskFormModal = () => {
             placeholder="쉼표로 구분하여 입력"
           />
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="ai_utilized_create"
-              checked={formData.is_ai_utilized}
-              onChange={(e) => setFormData({ ...formData, is_ai_utilized: e.target.checked })}
-              className="w-4 h-4 text-[#7952B3] border-gray-300 rounded focus:ring-[#7952B3]"
-            />
-            <label htmlFor="ai_utilized_create" className="text-sm text-gray-700">
-              AI 활용 업무
-            </label>
-          </div>
+          {/* [IMP-06] L4일 때만 AI 체크박스 표시 */}
+          {isNewL4 && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="ai_utilized_create"
+                checked={formData.is_ai_utilized}
+                onChange={(e) => setFormData({ ...formData, is_ai_utilized: e.target.checked })}
+                className="w-4 h-4 text-[#7952B3] border-gray-300 rounded focus:ring-[#7952B3]"
+              />
+              <label htmlFor="ai_utilized_create" className="text-sm text-gray-700">
+                AI 활용 업무
+              </label>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="secondary" className="flex-1" onClick={handleClose}>

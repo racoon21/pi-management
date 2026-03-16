@@ -1,4 +1,5 @@
 export type TaskLevel = 'Root' | 'L1' | 'L2' | 'L3' | 'L4';
+export type OrganizationType = '본부' | '실' | '담당' | '팀';
 
 export interface TaskGraphItem {
   id: string;
@@ -6,6 +7,7 @@ export interface TaskGraphItem {
   level: TaskLevel;
   name: string;
   organization: string;
+  organization_type: OrganizationType | null;
   team: string | null;
   manager_name: string | null;
   manager_id: string | null;
@@ -36,6 +38,7 @@ export interface TaskCreate {
   parent_id: string | null;
   name: string;
   organization: string;
+  organization_type?: OrganizationType | null;
   team?: string;
   manager_name?: string;
   manager_id?: string;
@@ -46,6 +49,7 @@ export interface TaskCreate {
 export interface TaskUpdate {
   name?: string;
   organization?: string;
+  organization_type?: OrganizationType | null;
   team?: string;
   manager_name?: string;
   manager_id?: string;
