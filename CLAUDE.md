@@ -714,3 +714,50 @@ npm run build    # tsc -b && vite build → dist/
 - 태스크 삭제는 **Soft Delete** (deleted_at 필드 사용)
 - 태스크 수정 시 반드시 **이력 스냅샷** 생성 필요
 - 필터링 시 **조상 노드 체인** 자동 유지 로직 필수
+
+---
+
+## 15. Admin 브랜치 작업 메모
+
+### 2026-03-17 - `feature/admin-route/navigation-shell`
+
+**목적**
+- 같은 로그인, 같은 포털 구조 안에서 `admin` 계정에게만 admin 메뉴와 admin placeholder 페이지를 노출하는 integrated admin navigation shell 구현
+
+**변경 파일**
+- `frontend/src/App.tsx`
+- `frontend/src/components/AdminRoute.tsx`
+- `frontend/src/components/layout/Sidebar.tsx`
+- `frontend/src/admin/pages/AdminPageTemplate.tsx`
+- `frontend/src/admin/pages/AdminDashboardPage.tsx`
+- `frontend/src/admin/pages/AdminUsersPage.tsx`
+- `frontend/src/admin/pages/AdminLogsPage.tsx`
+- `frontend/src/admin/pages/AdminRequestsPage.tsx`
+- `frontend/src/admin/pages/index.ts`
+
+**구현 내용**
+- `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` 라우트 추가
+- `AdminRoute` 추가: `admin` role만 admin 경로 접근 가능
+- 사이드바에 `admin` 계정 전용 메뉴 섹션 추가
+- admin placeholder 페이지 4종 추가
+- 기존 user 페이지와 기존 user 메뉴 동작은 유지
+
+**프론트엔드 QA 완료**
+- `admin` 로그인 시 Admin 메뉴 노출 확인
+- `viewer`, `editor` 로그인 시 Admin 메뉴 비노출 확인
+- `admin`으로 `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` 진입 확인
+- `viewer`, `editor`에서 `/admin` 직접 접근 시 홈 리다이렉트 확인
+- 기존 대시보드, 그래프, 업로드 등 기존 user 화면 동작 유지 확인
+- `frontend/.env.local`을 `http://localhost:8000/api`로 수정한 뒤 dev 서버 재기동 후 브라우저 로그인 흐름 재검증 완료
+
+**백엔드 QA 완료**
+- `GET /health` 200 OK 확인
+- `POST /api/auth/login`으로 `admin`, `viewer`, `editor` 로그인 성공 확인
+- `GET /api/auth/me`로 각 계정의 role이 `admin`, `viewer`, `editor`로 정확히 반환되는 것 확인
+- Supabase pooler 연결 기준으로 로컬 백엔드 기동 및 인증 흐름 검증 완료
+- 브라우저 로그인 실패 원인이 자격 증명이 아니라 잘못된 프론트 API base URL(`/auth/login` 호출)임을 확인하고 수정 반영
+
+**주의**
+- 이번 브랜치에는 백엔드 `/api/admin/*` 구현 없음
+- DB schema 변경 없음
+- admin 화면은 placeholder 상태이며 실제 데이터 연동은 다음 브랜치에서 진행

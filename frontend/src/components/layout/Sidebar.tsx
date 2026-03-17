@@ -4,6 +4,10 @@ import {
   LayoutDashboard,
   Network,
   Upload,
+  Shield,
+  Users,
+  ScrollText,
+  ClipboardList,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -18,10 +22,17 @@ interface NavItem {
   badge?: string;
 }
 
-const navItems: NavItem[] = [
+const mainNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: '대시보드', path: '/' },
   { icon: Network, label: '업무 그래프', path: '/graph' },
   { icon: Upload, label: '엑셀 업로드', path: '/upload' },
+];
+
+const adminNavItems: NavItem[] = [
+  { icon: Shield, label: '관리자 홈', path: '/admin' },
+  { icon: Users, label: '사용자 관리', path: '/admin/users' },
+  { icon: ScrollText, label: '활동 로그', path: '/admin/logs' },
+  { icon: ClipboardList, label: '운영 요청', path: '/admin/requests' },
 ];
 
 export const Sidebar = () => {
@@ -29,6 +40,7 @@ export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
 
   const handleLogout = () => {
     logout();
@@ -96,12 +108,24 @@ export const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {/* Main Navigation */}
         <div className="space-y-1">
-          {navItems.map((item) => (
+          {mainNavItems.map((item) => (
             <NavLink key={item.path} item={item} />
           ))}
         </div>
+
+        {isAdmin && (
+          <div className="pt-4 mt-4 border-t border-gray-800 space-y-1">
+            {!collapsed && (
+              <p className="px-3 pb-2 text-[11px] font-semibold tracking-[0.18em] text-gray-500 uppercase">
+                Admin
+              </p>
+            )}
+            {adminNavItems.map((item) => (
+              <NavLink key={item.path} item={item} />
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* User Section */}

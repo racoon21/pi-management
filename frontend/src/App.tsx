@@ -1,7 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LoginPage, DashboardPage, GraphPage, UploadPage } from './pages';
+import {
+  AdminDashboardPage,
+  AdminLogsPage,
+  AdminRequestsPage,
+  AdminUsersPage,
+} from './admin/pages';
 import { MainLayout } from './components/layout';
+import { AdminRoute } from './components/AdminRoute';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import './index.css';
 
@@ -32,6 +39,13 @@ function App() {
               <Route path="/users" element={<DashboardPage />} />
               <Route path="/settings" element={<DashboardPage />} />
               <Route path="/upload" element={<UploadPage />} />
+
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminDashboardPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
+                <Route path="/admin/logs" element={<AdminLogsPage />} />
+                <Route path="/admin/requests" element={<AdminRequestsPage />} />
+              </Route>
             </Route>
           </Route>
 
