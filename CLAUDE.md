@@ -754,10 +754,10 @@ npm run build    # tsc -b && vite build → dist/
 
 ### 2026-03-17 - `feature/admin-route/navigation-shell`
 
-**Purpose**
-- Implement the integrated admin navigation shell so that only `admin` accounts can see admin navigation and admin placeholder pages inside the existing portal.
+**목적**
+- 같은 로그인, 같은 포털 구조 안에서 `admin` 계정에게만 admin 메뉴와 admin placeholder 페이지를 노출하는 integrated admin navigation shell 구현
 
-**Changed Files**
+**변경 파일**
 - `frontend/src/App.tsx`
 - `frontend/src/components/AdminRoute.tsx`
 - `frontend/src/components/layout/Sidebar.tsx`
@@ -768,30 +768,29 @@ npm run build    # tsc -b && vite build → dist/
 - `frontend/src/admin/pages/AdminRequestsPage.tsx`
 - `frontend/src/admin/pages/index.ts`
 
-**Implementation**
-- Added `/admin`, `/admin/users`, `/admin/logs`, and `/admin/requests` routes.
-- Added `AdminRoute` so only the `admin` role can access admin routes.
-- Added an admin-only menu section in the shared sidebar.
-- Added four admin placeholder pages.
-- Preserved existing user pages and existing user navigation behavior.
+**구현 내용**
+- `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` 라우트 추가
+- `AdminRoute` 추가: `admin` role만 admin 경로 접근 가능
+- 사이드바에 `admin` 계정 전용 메뉴 섹션 추가
+- admin placeholder 페이지 4종 추가
+- 기존 user 페이지와 기존 user 메뉴 동작은 유지
 
-**Frontend QA Completed**
-- Verified that `admin` can see the Admin menu.
-- Verified that `viewer` and `editor` do not see the Admin menu.
-- Verified that `admin` can open `/admin`, `/admin/users`, `/admin/logs`, and `/admin/requests`.
-- Verified that `viewer` and `editor` are redirected away from `/admin`.
-- Verified that existing dashboard, graph, and upload screens still work.
-- Corrected `frontend/.env.local` to use `http://localhost:8000/api` and revalidated the browser login flow after restarting the dev server.
+**프론트엔드 QA 완료**
+- `admin` 로그인 시 Admin 메뉴 노출 확인
+- `viewer`, `editor` 로그인 시 Admin 메뉴 비노출 확인
+- `admin`으로 `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` 진입 확인
+- `viewer`, `editor`에서 `/admin` 직접 접근 시 홈 리다이렉트 확인
+- 기존 대시보드, 그래프, 업로드 등 기존 user 화면 동작 유지 확인
+- `frontend/.env.local`을 `http://localhost:8000/api`로 수정한 뒤 dev 서버 재기동 후 브라우저 로그인 흐름 재검증 완료
 
-**Backend QA Completed**
-- Verified `GET /health` returns `200 OK`.
-- Verified `POST /api/auth/login` succeeds for `admin`, `viewer`, and `editor`.
-- Verified `GET /api/auth/me` returns the correct roles for `admin`, `viewer`, and `editor`.
-- Verified local backend startup and authentication using the Supabase pooler connection.
-- Confirmed that the browser login failure was caused by an incorrect frontend API base URL (`/auth/login` instead of `/api/auth/login`) and fixed the local setting.
+**백엔드 QA 완료**
+- `GET /health` 200 OK 확인
+- `POST /api/auth/login`으로 `admin`, `viewer`, `editor` 로그인 성공 확인
+- `GET /api/auth/me`로 각 계정의 role이 `admin`, `viewer`, `editor`로 정확히 반환되는 것 확인
+- Supabase pooler 연결 기준으로 로컬 백엔드 기동 및 인증 흐름 검증 완료
+- 브라우저 로그인 실패 원인이 자격 증명이 아니라 잘못된 프론트 API base URL(`/auth/login` 호출)임을 확인하고 수정 반영
 
-**Notes**
-- This branch does not add backend `/api/admin/*` implementations.
-- This branch does not change the database schema.
-- Admin pages are still placeholder shells; real data integration will happen in a later branch.
-
+**주의**
+- 이번 브랜치에는 백엔드 `/api/admin/*` 구현 없음
+- DB schema 변경 없음
+- admin 화면은 placeholder 상태이며 실제 데이터 연동은 다음 브랜치에서 진행
