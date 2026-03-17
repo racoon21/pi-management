@@ -754,10 +754,10 @@ npm run build    # tsc -b && vite build → dist/
 
 ### 2026-03-17 - `feature/admin-route/navigation-shell`
 
-**??**
-- ?? ???, ?? ?? ?? ??? `admin` ????? admin ??? admin placeholder ???? ???? integrated admin navigation shell ??
+**Purpose**
+- Implement the integrated admin navigation shell so that only `admin` accounts can see admin navigation and admin placeholder pages inside the existing portal.
 
-**?? ??**
+**Changed Files**
 - `frontend/src/App.tsx`
 - `frontend/src/components/AdminRoute.tsx`
 - `frontend/src/components/layout/Sidebar.tsx`
@@ -768,30 +768,30 @@ npm run build    # tsc -b && vite build → dist/
 - `frontend/src/admin/pages/AdminRequestsPage.tsx`
 - `frontend/src/admin/pages/index.ts`
 
-**?? ??**
-- `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` ??? ??
-- `AdminRoute` ??: `admin` role? admin ?? ?? ??
-- ????? `admin` ?? ?? ?? ?? ??
-- admin placeholder ??? 4? ??
-- ?? user ???? ?? user ?? ??? ??
+**Implementation**
+- Added `/admin`, `/admin/users`, `/admin/logs`, and `/admin/requests` routes.
+- Added `AdminRoute` so only the `admin` role can access admin routes.
+- Added an admin-only menu section in the shared sidebar.
+- Added four admin placeholder pages.
+- Preserved existing user pages and existing user navigation behavior.
 
-**????? QA ??**
-- `admin` ??? ? Admin ?? ?? ??
-- `viewer`, `editor` ??? ? Admin ?? ??? ??
-- `admin`?? `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` ?? ??
-- `viewer`, `editor`?? `/admin` ?? ?? ? ? ????? ??
-- ?? ????, ???, ??? ? ?? user ?? ?? ?? ??
-- `frontend/.env.local`? ?? API ??? `http://localhost:8000/api`? ??? dev ?? ??? ? ???? ??? ?? ?? ??
+**Frontend QA Completed**
+- Verified that `admin` can see the Admin menu.
+- Verified that `viewer` and `editor` do not see the Admin menu.
+- Verified that `admin` can open `/admin`, `/admin/users`, `/admin/logs`, and `/admin/requests`.
+- Verified that `viewer` and `editor` are redirected away from `/admin`.
+- Verified that existing dashboard, graph, and upload screens still work.
+- Corrected `frontend/.env.local` to use `http://localhost:8000/api` and revalidated the browser login flow after restarting the dev server.
 
-**??? QA ??**
-- `GET /health` 200 OK ??
-- `POST /api/auth/login`?? `admin`, `viewer`, `editor` ??? ?? ??
-- `GET /api/auth/me`? ? ??? role? `admin`, `viewer`, `editor`? ??? ???? ? ??
-- Supabase pooler ?? ???? ?? ??? ?? ? ?? ?? ?? ??
-- ???? ??? ?? ??? ?? ??? ??? ??? ??? API base URL(`/auth/login` ??)?? ???? ?? ??
+**Backend QA Completed**
+- Verified `GET /health` returns `200 OK`.
+- Verified `POST /api/auth/login` succeeds for `admin`, `viewer`, and `editor`.
+- Verified `GET /api/auth/me` returns the correct roles for `admin`, `viewer`, and `editor`.
+- Verified local backend startup and authentication using the Supabase pooler connection.
+- Confirmed that the browser login failure was caused by an incorrect frontend API base URL (`/auth/login` instead of `/api/auth/login`) and fixed the local setting.
 
-**??**
-- ?? ????? ??? `/api/admin/*` ?? ??
-- DB schema ?? ??
-- admin ??? placeholder ???? ?? ??? ??? ?? ????? ??
+**Notes**
+- This branch does not add backend `/api/admin/*` implementations.
+- This branch does not change the database schema.
+- Admin pages are still placeholder shells; real data integration will happen in a later branch.
 
