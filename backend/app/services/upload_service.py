@@ -181,22 +181,31 @@ async def diff_tasks(db: AsyncSession, parsed: ParsedExcel) -> DiffResult:
 async def upsert_tasks(
     db: AsyncSession, parsed: ParsedExcel, user_id: UUID
 ) -> UpsertResult:
-    """파싱된 데이터를 DB에 upsert."""
+    """파싱된 데이터를 DB에 upsert (Bulk 최적화).
+
+    기존: 노드마다 SELECT + INSERT + flush → ~2,500 DB 왕복
+    개선: 사전 인덱싱 1회 + 레벨별 bulk flush 4회 → ~6 DB 왕복
+    """
     created = 0
     skipped = 0
 
-    # Root 노드 조회/생성
-    result = await db.execute(
-        select(Task).where(Task.level == "Root", Task.deleted_at.is_(None))
+    # ── 1. 기존 태스크 전체 로드 + 인메모리 인덱스 (1 query) ──
+    all_result = await db.execute(
+        select(Task).where(Task.deleted_at.is_(None))
     )
-    root = result.scalar_one_or_none()
+    all_tasks = list(all_result.scalars().all())
+
+    # (parent_id, normalized_name) → Task
+    index: dict[tuple[UUID | None, str], Task] = {}
+    for t in all_tasks:
+        index[(t.parent_id, _normalize_name(t.name))] = t
+
+    # ── 2. Root 노드 조회/생성 ──
+    root = next((t for t in all_tasks if t.level == "Root"), None)
     if not root:
         root = Task(
-            level="Root",
-            name="Root",
-            organization="",
-            created_by=user_id,
-            updated_by=user_id,
+            level="Root", name="Root", organization="",
+            created_by=user_id, updated_by=user_id,
         )
         db.add(root)
         await db.flush()
@@ -205,79 +214,81 @@ async def upsert_tasks(
 
     hierarchy = build_hierarchy(parsed)
 
-    for l1_node in hierarchy:
-        l1_task, is_new = await _find_or_create(
-            db, root.id, "L1", l1_node.name, l1_node.name, user_id
-        )
-        if is_new:
-            created += 1
-        else:
+    # ── 3. 계층 순회: 인메모리 매칭 + 신규 태스크 수집 ──
+    new_tasks: list[Task] = []
+
+    def _lookup_or_new(
+        parent: Task, level: str, name: str, organization: str,
+    ) -> Task:
+        nonlocal created, skipped
+        key = (parent.id, _normalize_name(name))
+        existing = index.get(key)
+        if existing:
             skipped += 1
+            return existing
+        task = Task(
+            parent_id=parent.id, level=level, name=name,
+            organization=organization,
+            created_by=user_id, updated_by=user_id,
+        )
+        new_tasks.append(task)
+        created += 1
+        return task
 
+    # L1 수집
+    l1_map: list[tuple[Task, HierarchyNode]] = []
+    for l1_node in hierarchy:
+        l1_task = _lookup_or_new(root, "L1", l1_node.name, l1_node.name)
+        l1_map.append((l1_task, l1_node))
+
+    # L1 flush → ID 확정, 인덱스 갱신
+    await _flush_new(db, new_tasks, index)
+
+    # L2 수집
+    l2_map: list[tuple[Task, HierarchyNode, str]] = []
+    for l1_task, l1_node in l1_map:
         for l2_node in l1_node.children:
-            l2_task, is_new = await _find_or_create(
-                db, l1_task.id, "L2", l2_node.name, l1_node.name, user_id
-            )
-            if is_new:
-                created += 1
-            else:
-                skipped += 1
+            l2_task = _lookup_or_new(l1_task, "L2", l2_node.name, l1_node.name)
+            l2_map.append((l2_task, l2_node, l1_node.name))
 
-            for l3_node in l2_node.children:
-                l3_task, is_new = await _find_or_create(
-                    db, l2_task.id, "L3", l3_node.name, l1_node.name, user_id
-                )
-                if is_new:
-                    created += 1
-                else:
-                    skipped += 1
+    await _flush_new(db, new_tasks, index)
 
-                for l4_node in l3_node.children:
-                    _, is_new = await _find_or_create(
-                        db, l3_task.id, "L4", l4_node.name, l1_node.name, user_id
-                    )
-                    if is_new:
-                        created += 1
-                    else:
-                        skipped += 1
+    # L3 수집
+    l3_map: list[tuple[Task, HierarchyNode, str]] = []
+    for l2_task, l2_node, org in l2_map:
+        for l3_node in l2_node.children:
+            l3_task = _lookup_or_new(l2_task, "L3", l3_node.name, org)
+            l3_map.append((l3_task, l3_node, org))
 
+    await _flush_new(db, new_tasks, index)
+
+    # L4 수집
+    for l3_task, l3_node, org in l3_map:
+        for l4_node in l3_node.children:
+            _lookup_or_new(l3_task, "L4", l4_node.name, org)
+
+    await _flush_new(db, new_tasks, index)
+
+    # ── 4. 커밋 ──
     await db.commit()
     return UpsertResult(created=created, skipped=skipped, total=created + skipped)
 
 
-async def _find_or_create(
+async def _flush_new(
     db: AsyncSession,
-    parent_id: UUID,
-    level: str,
-    name: str,
-    organization: str,
-    user_id: UUID,
-) -> tuple[Task, bool]:
-    """[IMP-08] 이름과 부모 ID로 기존 태스크를 찾거나 새로 생성 (띄어쓰기 제외 비교)."""
-    result = await db.execute(
-        select(Task).where(
-            Task.parent_id == parent_id,
-            Task.deleted_at.is_(None),
-        )
-    )
-    all_children = list(result.scalars().all())
-    normalized_name = _normalize_name(name)
-    existing = next((t for t in all_children if _normalize_name(t.name) == normalized_name), None)
-    if existing:
-        return existing, False
-
-    task = Task(
-        parent_id=parent_id,
-        level=level,
-        name=name,
-        organization=organization,
-        created_by=user_id,
-        updated_by=user_id,
-    )
-    db.add(task)
-    await db.flush()
-    _create_history(db, task, user_id)
-    return task, True
+    pending: list[Task],
+    index: dict[tuple[UUID | None, str], Task],
+) -> None:
+    """pending 리스트의 신규 태스크를 bulk flush + 히스토리 생성 + 인덱스 갱신."""
+    if not pending:
+        return
+    batch = list(pending)
+    pending.clear()
+    db.add_all(batch)
+    await db.flush()  # 1회 flush로 모든 ID 확정
+    for task in batch:
+        _create_history(db, task, task.created_by)
+        index[(task.parent_id, _normalize_name(task.name))] = task
 
 
 def _create_history(db: AsyncSession, task: Task, user_id: UUID) -> None:

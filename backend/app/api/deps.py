@@ -3,7 +3,6 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from app.db.session import get_db
 from app.core.security import decode_token, is_token_blacklisted
 from app.models import User
@@ -13,11 +12,14 @@ security = HTTPBearer()
 
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
+    """JWT payload에서 유저 정보를 복원 (DB 조회 없음).
+
+    access token에 user 정보가 포함되어 있으므로 DB 왕복 불필요.
+    토큰 만료(15분)로 role/active 변경이 자동 반영됨.
+    """
     token = credentials.credentials
 
-    # 블랙리스트 확인
     if is_token_blacklisted(token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
 
@@ -30,13 +32,21 @@ async def get_current_user(
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    result = await db.execute(select(User).where(User.id == UUID(user_id)))
-    user = result.scalar_one_or_none()
+    # JWT payload에 유저 정보가 있으면 DB 조회 없이 User 객체 생성
+    if "role" in payload:
+        user = User(
+            id=UUID(user_id),
+            employee_id=payload.get("employee_id", ""),
+            password_hash="",
+            name=payload.get("name", ""),
+            organization=payload.get("organization", ""),
+            role=payload.get("role", "viewer"),
+            is_active=True,
+        )
+        return user
 
-    if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-
-    return user
+    # Fallback: 기존 토큰(유저 정보 미포함)은 401 → 재로그인 유도
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token upgrade required")
 
 
 async def get_active_user(

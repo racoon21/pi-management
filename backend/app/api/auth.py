@@ -14,6 +14,17 @@ from app.schemas import ApiResponse, LoginRequest, TokenResponse, RefreshRequest
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _user_token_data(user: User) -> dict:
+    """JWT access token에 포함할 유저 정보 (DB 조회 없이 인증 가능)."""
+    return {
+        "sub": str(user.id),
+        "employee_id": user.employee_id,
+        "name": user.name,
+        "organization": user.organization,
+        "role": user.role,
+    }
+
+
 @router.post("/login", response_model=ApiResponse[TokenResponse])
 @limiter.limit("5/minute")  # 분당 5회 로그인 시도 제한
 async def login(request: Request, login_data: LoginRequest, db: DbSession):
@@ -26,7 +37,8 @@ async def login(request: Request, login_data: LoginRequest, db: DbSession):
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User is inactive")
 
-    access_token = create_access_token({"sub": str(user.id)})
+    token_data = _user_token_data(user)
+    access_token = create_access_token(token_data)
     refresh_token = create_refresh_token({"sub": str(user.id)})
 
     return ApiResponse(
@@ -57,7 +69,8 @@ async def refresh(request: Request, refresh_data: RefreshRequest, db: DbSession)
     # 기존 refresh token 블랙리스트에 추가
     add_token_to_blacklist(refresh_data.refresh_token)
 
-    access_token = create_access_token({"sub": str(user.id)})
+    token_data = _user_token_data(user)
+    access_token = create_access_token(token_data)
     refresh_token = create_refresh_token({"sub": str(user.id)})
 
     return ApiResponse(

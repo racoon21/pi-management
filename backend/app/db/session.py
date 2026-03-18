@@ -17,6 +17,11 @@ engine = create_async_engine(
     connect_args={
         "statement_cache_size": 0,
         "prepared_statement_cache_size": 0,
+        "server_settings": {
+            "tcp_keepalives_idle": "30",
+            "tcp_keepalives_interval": "10",
+            "tcp_keepalives_count": "3",
+        },
     },
 )
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

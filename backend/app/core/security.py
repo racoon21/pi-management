@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 from .config import settings
 import hashlib
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=10)
 
 # 토큰 블랙리스트 (프로덕션에서는 Redis 사용 권장)
 # 메모리 기반 블랙리스트 (서버 재시작 시 초기화됨)
