@@ -2,7 +2,7 @@
 
 > **이 문서는 AI 코딩 어시스턴트(Codex, Claude, Cursor 등)와 함께 개발하기 위해 최적화된 명세서입니다.**
 > 코드 수정 시 이 문서를 먼저 읽고 전체 구조를 파악한 뒤 작업해 주세요.
-> 최종 업데이트: 2026-03-11
+> 최종 업데이트: 2026-03-18
 
 ---
 
@@ -56,9 +56,10 @@
 |------|------|
 | 사번/비밀번호 로그인 | `authApi.login(employeeId, password)` 호출, JWT 토큰 쌍 발급 |
 | 토큰 저장 | Zustand `authStore`에 accessToken/refreshToken 저장, `localStorage` persist |
-| 로그인 후 리다이렉트 | 성공 시 `/` (대시보드)로 이동 |
+| 로그인 후 리다이렉트 | 성공 시 `/` (대시보드)로 이동, role="none"이면 승인 대기 페이지 표시 |
 | 에러 표시 | 잘못된 자격증명 시 인라인 에러 메시지 표시 |
 | 로딩 상태 | 로그인 요청 중 버튼 비활성화 + 스피너 |
+| 회원가입 링크 | 하단 "계정이 없으신가요? 회원가입" → `/signup` |
 
 **UI 레이아웃**:
 - 2열 분할: 좌측 SK Broadband 브랜딩 사이드바(다크) + 우측 로그인 폼(라이트)
@@ -69,7 +70,40 @@
 
 ---
 
-### 2.2 대시보드 페이지 (`DashboardPage.tsx`)
+### 2.2 회원가입 페이지 (`SignUpPage.tsx`)
+
+- **경로**: `/signup`
+- **파일**: `frontend/src/pages/SignUpPage.tsx`
+- **공개 접근**: 인증 불필요
+
+| 기능 | 설명 |
+|------|------|
+| 회원가입 폼 | 사번, 이름, 소속 조직, 비밀번호, 비밀번호 확인 5개 필드 |
+| 클라이언트 검증 | 비밀번호 최소 6자, 비밀번호 확인 일치 여부 |
+| 서버 호출 | `authApi.register()` → `POST /api/auth/register` (rate limit 3/분) |
+| 가입 성공 | "가입 완료" 안내 + 로그인 페이지 링크 표시 |
+| 에러 처리 | 409 → "이미 등록된 사번입니다", 422 → 필드별 검증 메시지 |
+
+**UI 레이아웃**: LoginPage와 동일한 2열 분할 (좌측 브랜딩 + 우측 폼)
+**상태**: 로컬 state (formData, loading, error, success)
+
+---
+
+### 2.3 승인 대기 페이지 (`PendingApprovalPage.tsx`)
+
+- **파일**: `frontend/src/pages/PendingApprovalPage.tsx`
+- **별도 라우트 없음**: `ProtectedRoute` 내에서 `user.role === 'none'` 시 조건부 렌더링
+
+| 기능 | 설명 |
+|------|------|
+| 대기 안내 | 전체 화면 중앙 카드, Hourglass 아이콘, "승인 대기 중" 제목 |
+| 사용자 정보 | 이름, 사번 표시 |
+| 자동 폴링 | 30초마다 `GET /api/auth/me` 호출 → role 변경 시 자동 전환 |
+| 로그아웃 | 로그아웃 버튼 제공 |
+
+---
+
+### 2.5 대시보드 페이지 (`DashboardPage.tsx`)
 
 - **경로**: `/` (홈)
 - **파일**: `frontend/src/pages/DashboardPage.tsx`
@@ -93,7 +127,7 @@
 
 ---
 
-### 2.3 그래프 페이지 (`GraphPage.tsx`)
+### 2.6 그래프 페이지 (`GraphPage.tsx`)
 
 - **경로**: `/graph`, `/tasks`, `/history`
 - **파일**: `frontend/src/pages/GraphPage.tsx`
@@ -150,11 +184,12 @@
 
 ---
 
-### 2.4 업로드 페이지 (`UploadPage.tsx`)
+### 2.7 업로드 페이지 (`UploadPage.tsx`)
 
 - **경로**: `/upload`
 - **파일**: `frontend/src/pages/UploadPage.tsx`
 - **인증 필요**: `ProtectedRoute` 래핑
+- **권한**: editor/admin만 접근 가능 (viewer → "권한이 없습니다" 표시)
 
 **4단계 워크플로우**:
 
@@ -177,6 +212,32 @@
 - 결과 통계 카드
 
 **상태**: 로컬 state (step, file, preview, diff, result, error, loading)
+
+---
+
+### 2.8 Admin 페이지 (`frontend/src/admin/pages/`)
+
+- **경로**: `/admin/*`
+- **인증 필요**: `AdminRoute` 래핑 (admin role 전용)
+
+| 경로 | 파일 | 설명 |
+|------|------|------|
+| `/admin` | `AdminDashboardPage.tsx` | Admin 대시보드 (placeholder) |
+| `/admin/users` | `AdminUsersPage.tsx` | 사용자 관리 테이블 (역할 변경, 활성 토글) |
+| `/admin/requests` | `AdminRequestsPage.tsx` | 가입 승인 대기 사용자 카드 (승인/거절) |
+| `/admin/logs` | `AdminLogsPage.tsx` | 활동 로그 (placeholder) |
+
+**AdminUsersPage 기능**:
+- 사용자 목록 테이블 (사번, 이름, 조직, 역할 배지, 활성 상태, 생성일)
+- 역할 변경 드롭다운 (viewer/editor/admin)
+- 활성/비활성 토글
+- role 필터 탭 (전체/대기/viewer/editor/admin)
+
+**AdminRequestsPage 기능**:
+- 대기 중 사용자(role="none") 카드 목록
+- "Viewer로 승인" / "Editor로 승인" 버튼
+- "거절" 버튼 (is_active=false)
+- 빈 상태: "대기 중인 요청이 없습니다"
 
 ---
 
