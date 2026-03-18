@@ -4,11 +4,12 @@ from sqlalchemy import select
 from app.api.deps import DbSession, CurrentUser
 from app.core.security import (
     verify_password, create_access_token, create_refresh_token,
-    decode_token, add_token_to_blacklist, is_token_blacklisted
+    decode_token, add_token_to_blacklist, is_token_blacklisted,
+    get_password_hash,
 )
 from app.core.rate_limit import limiter
 from app.models import User
-from app.schemas import ApiResponse, LoginRequest, TokenResponse, RefreshRequest, UserResponse
+from app.schemas import ApiResponse, LoginRequest, TokenResponse, RefreshRequest, UserResponse, RegisterRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -80,3 +81,25 @@ async def logout(request: Request, current_user: CurrentUser):
 @router.get("/me", response_model=ApiResponse[UserResponse])
 async def get_me(current_user: CurrentUser):
     return ApiResponse(success=True, data=UserResponse.model_validate(current_user))
+
+
+@router.post("/register", response_model=ApiResponse[UserResponse])
+@limiter.limit("3/minute")
+async def register(request: Request, register_data: RegisterRequest, db: DbSession):
+    """회원가입 - role='none'으로 생성, 관리자 승인 필요"""
+    result = await db.execute(select(User).where(User.employee_id == register_data.employee_id))
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 등록된 사번입니다")
+
+    user = User(
+        employee_id=register_data.employee_id,
+        password_hash=get_password_hash(register_data.password),
+        name=register_data.name,
+        organization=register_data.organization,
+        role="none",
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    return ApiResponse(success=True, data=UserResponse.model_validate(user), message="가입 완료. 관리자 승인 후 이용 가능합니다.")

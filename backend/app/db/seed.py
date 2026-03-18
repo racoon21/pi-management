@@ -49,6 +49,30 @@ async def seed_database():
             role="admin",
         )
         db.add(admin)
+
+        # 테스트 계정 생성
+        viewer = User(
+            employee_id="viewer",
+            password_hash=get_password_hash("viewer123"),
+            name="뷰어",
+            organization="SK브로드밴드",
+            role="viewer",
+        )
+        editor = User(
+            employee_id="editor",
+            password_hash=get_password_hash("editor123"),
+            name="편집자",
+            organization="SK브로드밴드",
+            role="editor",
+        )
+        pending = User(
+            employee_id="pending",
+            password_hash=get_password_hash("pending123"),
+            name="대기자",
+            organization="SK브로드밴드",
+            role="none",
+        )
+        db.add_all([viewer, editor, pending])
         await db.flush()
 
         # Root 노드

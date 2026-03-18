@@ -62,5 +62,5 @@ export interface User {
   employee_id: string;
   name: string;
   organization: string;
-  role: 'admin' | 'editor' | 'viewer';
+  role: 'admin' | 'editor' | 'viewer' | 'none';
 }

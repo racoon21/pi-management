@@ -11,6 +11,13 @@ interface LoginRequest {
   password: string;
 }
 
+interface RegisterRequest {
+  employee_id: string;
+  name: string;
+  organization: string;
+  password: string;
+}
+
 export const authApi = {
   login: async (employeeId: string, password: string): Promise<TokenResponse> => {
     const data: LoginRequest = {
@@ -26,5 +33,9 @@ export const authApi = {
 
   getMe: async (): Promise<User> => {
     return apiClient.get<User>('/auth/me');
+  },
+
+  register: async (data: RegisterRequest): Promise<User> => {
+    return apiClient.post<User>('/auth/register', data);
   },
 };

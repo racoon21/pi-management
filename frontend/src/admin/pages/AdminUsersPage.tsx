@@ -1,14 +1,162 @@
-import { AdminPageTemplate } from './AdminPageTemplate';
+import { useState, useEffect, useCallback } from 'react';
+import { Header } from '../../components/layout/Header';
+import { Badge } from '../../components/shared/Badge';
+import { adminApi, type UserListItem } from '../../api/adminApi';
 
-export const AdminUsersPage = () => (
-  <AdminPageTemplate
-    title="사용자 관리"
-    subtitle="기존 사용자 계정 현황을 조회하고 운영 요청을 준비합니다"
-    description="Beta 초기 단계에서는 읽기 전용 사용자 디렉터리부터 연결합니다. 이후 브랜치에서 role 변경 요청과 활성/비활성 요청 흐름을 단계적으로 붙일 예정입니다."
-    highlights={[
-      '사용자 목록과 검색/필터 UI',
-      'role, 조직, 활성 여부 조회',
-      '향후 role 변경 요청 진입점 추가',
-    ]}
-  />
-);
+const ROLE_OPTIONS = ['viewer', 'editor', 'admin'] as const;
+
+const roleLabel = (role: string) => {
+  switch (role) {
+    case 'admin': return '관리자';
+    case 'editor': return '편집자';
+    case 'viewer': return '뷰어';
+    case 'none': return '대기';
+    default: return role;
+  }
+};
+
+export const AdminUsersPage = () => {
+  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>('');
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = filter ? { role: filter } : undefined;
+      const data = await adminApi.getUsers(params);
+      setUsers(data);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      await adminApi.updateRole(userId, newRole);
+      fetchUsers();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '역할 변경 실패');
+    }
+  };
+
+  const handleToggleActive = async (userId: string, currentActive: boolean) => {
+    try {
+      await adminApi.toggleActive(userId, !currentActive);
+      fetchUsers();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '상태 변경 실패');
+    }
+  };
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <Header title="사용자 관리" subtitle="사용자 계정 현황 조회 및 역할 관리" />
+      <div className="flex-1 overflow-y-auto p-6">
+        {/* Filter */}
+        <div className="mb-4 flex gap-2">
+          {['', 'none', 'viewer', 'editor', 'admin'].map((r) => (
+            <button
+              key={r}
+              onClick={() => setFilter(r)}
+              className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                filter === r
+                  ? 'bg-[#7952B3] text-white border-[#7952B3]'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {r === '' ? '전체' : roleLabel(r)}
+            </button>
+          ))}
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">사번</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">이름</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">조직</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">역할</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">상태</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">가입일</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">액션</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                    로딩 중...
+                  </td>
+                </tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                    사용자가 없습니다
+                  </td>
+                </tr>
+              ) : (
+                users.map((u) => (
+                  <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-gray-700">{u.employee_id}</td>
+                    <td className="px-4 py-3 text-gray-900">{u.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{u.organization}</td>
+                    <td className="px-4 py-3">
+                      {u.role === 'none' ? (
+                        <Badge variant="warning" size="sm">대기</Badge>
+                      ) : (
+                        <select
+                          value={u.role}
+                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                          className="text-xs border border-gray-200 rounded px-2 py-1"
+                        >
+                          {ROLE_OPTIONS.map((r) => (
+                            <option key={r} value={r}>{roleLabel(r)}</option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={u.is_active ? 'success' : 'danger'} size="sm">
+                        {u.is_active ? '활성' : '비활성'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {new Date(u.created_at).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        {u.role === 'none' && (
+                          <button
+                            onClick={() => handleRoleChange(u.id, 'viewer')}
+                            className="text-xs px-2 py-1 bg-[#7952B3] text-white rounded hover:bg-[#6a46a0] transition-colors"
+                          >
+                            승인
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleToggleActive(u.id, u.is_active)}
+                          className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                        >
+                          {u.is_active ? '비활성화' : '활성화'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
