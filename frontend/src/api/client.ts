@@ -1,6 +1,15 @@
 // 프록시를 통해 /api로 요청하면 백엔드로 전달됨
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'ApiError';
+  }
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -111,7 +120,7 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Network error' }));
-      throw new Error(error.detail || `HTTP ${response.status}`);
+      throw new ApiError(response.status, error.detail || `HTTP ${response.status}`);
     }
 
     const result: ApiResponse<T> = await response.json();

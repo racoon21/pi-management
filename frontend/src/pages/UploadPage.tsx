@@ -9,11 +9,14 @@ import {
   ArrowRight,
   X,
   AlertCircle,
+  ShieldAlert,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Header } from '../components/layout/Header';
 import { Button } from '../components/shared/Button';
 import { Badge } from '../components/shared/Badge';
+import { useAuthStore } from '../stores/authStore';
+import { permissions } from '../utils/permissions';
 import {
   uploadApi,
   type UploadPreview,
@@ -27,6 +30,24 @@ type Step = 'upload' | 'preview' | 'diff' | 'result';
 export const UploadPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const user = useAuthStore((s) => s.user);
+
+  if (!permissions.canUpload(user)) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header title="엑셀 업로드" subtitle="업무 데이터 일괄 업로드" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ShieldAlert className="text-gray-400" size={32} />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">권한이 없습니다</h3>
+            <p className="text-gray-400 text-sm">업로드 기능은 Editor 또는 Admin 권한이 필요합니다.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);

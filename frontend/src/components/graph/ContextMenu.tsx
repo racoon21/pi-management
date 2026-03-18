@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { Plus, Edit, Trash2, History, Eye, Copy } from 'lucide-react';
 import { useTaskStore } from '../../stores/taskStore';
 import { useModalStore } from '../../stores/modalStore';
+import { useAuthStore } from '../../stores/authStore';
+import { permissions } from '../../utils/permissions';
 import toast from 'react-hot-toast';
 
 interface ContextMenuProps {
@@ -15,6 +17,9 @@ export const ContextMenu = ({ x, y, nodeId, onClose }: ContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { tasks, selectTask, deleteTask } = useTaskStore();
   const { openModal } = useModalStore();
+  const user = useAuthStore((s) => s.user);
+  const canEdit = permissions.canEditTask(user);
+  const canDelete = permissions.canDeleteTask(user);
 
   const task = tasks.find(t => t.id === nodeId);
   const hasChildren = tasks.some(t => t.parent_id === nodeId);
@@ -104,13 +109,15 @@ export const ContextMenu = ({ x, y, nodeId, onClose }: ContextMenuProps) => {
 
   const menuItems = [
     { icon: Eye, label: '상세 보기', onClick: handleViewDetail },
-    { icon: Plus, label: '하위 업무 추가', onClick: handleAddChild, disabled: task?.level === 'L4' },
+    ...(canEdit ? [{ icon: Plus, label: '하위 업무 추가', onClick: handleAddChild, disabled: task?.level === 'L4' }] : []),
     { divider: true },
-    { icon: Edit, label: '수정', onClick: handleEdit },
+    ...(canEdit ? [{ icon: Edit, label: '수정', onClick: handleEdit }] : []),
     { icon: History, label: '변경 이력', onClick: handleViewHistory },
     { icon: Copy, label: 'ID 복사', onClick: handleCopyId },
-    { divider: true },
-    { icon: Trash2, label: '삭제', onClick: handleDelete, danger: true, disabled: hasChildren },
+    ...(canDelete ? [
+      { divider: true },
+      { icon: Trash2, label: '삭제', onClick: handleDelete, danger: true, disabled: hasChildren },
+    ] : []),
   ];
 
   return (

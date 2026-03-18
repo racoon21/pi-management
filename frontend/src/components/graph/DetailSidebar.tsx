@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Edit, Trash2, Plus, User, Building, Tag, Calendar, Sparkles, Clock, Save, ChevronRight } from 'lucide-react';
 import { useTaskStore } from '../../stores/taskStore';
 import { useModalStore } from '../../stores/modalStore';
+import { useAuthStore } from '../../stores/authStore';
+import { permissions } from '../../utils/permissions';
 import { taskApi } from '../../api';
 import { Button } from '../shared/Button';
 import { Badge } from '../shared/Badge';
@@ -26,6 +28,9 @@ const levelStyles: Record<TaskLevel, { bg: string; text: string; style?: React.C
 export const DetailSidebar = () => {
   const { selectedTask, selectedTaskId, selectTask, deleteTask, updateTask } = useTaskStore();
   const { openModal } = useModalStore();
+  const authUser = useAuthStore((s) => s.user);
+  const canEdit = permissions.canEditTask(authUser);
+  const canDelete = permissions.canDeleteTask(authUser);
   const [activeTab, setActiveTab] = useState<'detail' | 'history'>('detail');
   const [history, setHistory] = useState<TaskHistory[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -333,16 +338,18 @@ export const DetailSidebar = () => {
       </div>
 
       {/* Actions */}
-      {!isEditing && activeTab === 'detail' && (
+      {!isEditing && activeTab === 'detail' && (canEdit || canDelete) && (
         <div className="p-4 border-t border-gray-200 space-y-2">
-          {nextLevel && (
+          {canEdit && nextLevel && (
             <Button variant="primary" className="w-full" icon={Plus} onClick={handleAddChild}>
               하위 업무 추가 ({nextLevel})
             </Button>
           )}
           <div className="flex gap-2">
-            <Button variant="secondary" className="flex-1" icon={Edit} onClick={enterEditMode}>수정</Button>
-            {selectedTask.level !== 'Root' && (
+            {canEdit && (
+              <Button variant="secondary" className="flex-1" icon={Edit} onClick={enterEditMode}>수정</Button>
+            )}
+            {canDelete && selectedTask.level !== 'Root' && (
               <Button variant="danger" className="flex-1" icon={Trash2} onClick={handleDeleteClick}>삭제</Button>
             )}
           </div>
