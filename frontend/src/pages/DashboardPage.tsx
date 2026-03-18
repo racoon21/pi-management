@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Network,
   Sparkles,
-  Building,
   ArrowRight,
   BarChart3,
   PieChart,
@@ -52,9 +51,6 @@ export const DashboardPage = () => {
     const l4Tasks = tasks.filter((t) => t.level === 'L4');
     const l4AiCount = l4Tasks.filter((t) => t.is_ai_utilized).length;
 
-    // 조직 단위: L2 기준
-    const l2Orgs = [...new Set(tasks.filter((t) => t.level === 'L2').map((t) => t.name))];
-
     // Root 제외 전체 노드 수
     const totalExcludingRoot = tasks.filter((t) => t.level !== 'Root').length;
 
@@ -64,14 +60,12 @@ export const DashboardPage = () => {
       l4Total: l4Tasks.length,
       l4AiCount,
       l4AiPercentage: l4Tasks.length > 0 ? ((l4AiCount / l4Tasks.length) * 100).toFixed(1) : '0',
-      l2Orgs,
-      l2OrgCount: l2Orgs.length,
     };
   }, [tasks]);
 
-  // 조직(L2)별 L4 업무 수 및 AI 활용 수
+  // 조직(L1)별 L4 업무 수 및 AI 활용 수
   const orgStats = useMemo(() => {
-    const l2Tasks = tasks.filter((t) => t.level === 'L2');
+    const l1Tasks = tasks.filter((t) => t.level === 'L1');
 
     // 부모→자식 맵 구축
     const childrenMap = new Map<string, string[]>();
@@ -83,11 +77,11 @@ export const DashboardPage = () => {
       }
     }
 
-    // BFS로 L2 하위의 모든 L4 수집
-    return l2Tasks.map((l2) => {
+    // BFS로 L1 하위의 모든 L4 수집
+    return l1Tasks.map((l1) => {
       let l4Count = 0;
       let l4AiCount = 0;
-      const queue = [l2.id];
+      const queue = [l1.id];
       while (queue.length > 0) {
         const id = queue.shift()!;
         const children = childrenMap.get(id) || [];
@@ -103,8 +97,8 @@ export const DashboardPage = () => {
         }
       }
       const aiPercent = l4Count > 0 ? Math.round((l4AiCount / l4Count) * 100) : 0;
-      return { name: l2.name, l4Count, l4AiCount, aiPercent };
-    }).sort((a, b) => b.l4Count - a.l4Count).slice(0, 8);
+      return { name: l1.name, l4Count, l4AiCount, aiPercent };
+    }).sort((a, b) => b.l4Count - a.l4Count);
   }, [tasks]);
 
   const recentTasks = tasks.slice(0, 8);
@@ -125,7 +119,7 @@ export const DashboardPage = () => {
       <Header title="대시보드" subtitle={`안녕하세요, ${user?.name}님`} />
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Welcome Banner - 단색 배경, 그라데이션 없음 */}
+        {/* Welcome Banner */}
         <div className="bg-[#5E3D8F] rounded-2xl p-6 text-white">
           <h2 className="text-2xl font-bold mb-2">전사 업무 프로세스 관리 시스템</h2>
           <p className="text-white/80 mb-4">
@@ -142,8 +136,8 @@ export const DashboardPage = () => {
           </Button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stats Grid - 3개 지표 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatCard
             icon={Network}
             label="전체 노드"
@@ -151,23 +145,17 @@ export const DashboardPage = () => {
             color="bg-[#8E72EE]"
           />
           <StatCard
+            icon={BarChart3}
+            label="L4 업무"
+            value={(stats.byLevel['L4'] || 0).toLocaleString()}
+            color="bg-[#191927]"
+          />
+          <StatCard
             icon={Sparkles}
             label="AI 활용률 (L4)"
             value={`${stats.l4AiPercentage}%`}
             subValue={`${stats.l4AiCount} / ${stats.l4Total} 건`}
             color="bg-[#7259D9]"
-          />
-          <StatCard
-            icon={Building}
-            label="조직 단위 (L2)"
-            value={stats.l2OrgCount.toString()}
-            color="bg-[#00D7D2]"
-          />
-          <StatCard
-            icon={BarChart3}
-            label="L4 업무"
-            value={(stats.byLevel['L4'] || 0).toLocaleString()}
-            color="bg-[#191927]"
           />
         </div>
 
@@ -209,38 +197,36 @@ export const DashboardPage = () => {
             </div>
           </div>
 
-          {/* Organization Stats (L2 기준) - 레벨별 분포와 동일 디자인 */}
+          {/* Organization Stats (L1 기준) */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <PieChart size={20} className="text-[#00D7D2]" />
-              조직별 업무 현황 (L2)
+              조직별 업무 현황 (L1)
             </h3>
             {orgStats.length === 0 ? (
               <div className="text-gray-400 text-sm text-center py-8">데이터 없음</div>
             ) : (
               <div className="space-y-3">
-                {orgStats.map((org) => {
-                  return (
-                    <div key={org.name} className="flex items-center gap-3">
-                      <span
-                        className="w-28 text-sm font-semibold px-2 py-0.5 rounded truncate text-center"
-                        style={{ backgroundColor: '#B8B3D0' + '30', color: '#6B5B8D' }}
-                        title={org.name}
-                      >
-                        {org.name}
-                      </span>
-                      <div className="flex-1 h-7 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-[#B8B3D0] transition-all duration-700"
-                          style={{ width: `${Math.max(org.aiPercent, 1)}%` }}
-                        />
-                      </div>
-                      <span className="w-24 text-sm text-gray-600 text-right font-medium">
-                        {org.l4Count.toLocaleString()} <span className="text-gray-400 text-xs">(AI {org.aiPercent}%)</span>
-                      </span>
+                {orgStats.map((org) => (
+                  <div key={org.name} className="flex items-center gap-3">
+                    <span
+                      className="w-28 text-sm font-semibold px-2 py-0.5 rounded truncate text-center"
+                      style={{ backgroundColor: '#B8B3D0' + '30', color: '#6B5B8D' }}
+                      title={org.name}
+                    >
+                      {org.name}
+                    </span>
+                    <div className="flex-1 h-7 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[#B8B3D0] transition-all duration-700"
+                        style={{ width: `${Math.max(org.aiPercent, 1)}%` }}
+                      />
                     </div>
-                  );
-                })}
+                    <span className="w-24 text-sm text-gray-600 text-right font-medium">
+                      {org.l4Count.toLocaleString()} <span className="text-gray-400 text-xs">(AI {org.aiPercent}%)</span>
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
