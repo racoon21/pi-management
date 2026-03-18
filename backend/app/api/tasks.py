@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, status, Query
 from app.api.deps import DbSession, ActiveUser, EditorUser, AdminUser
 from app.schemas import ApiResponse, TaskGraphItem, TaskDetail, TaskCreate, TaskUpdate, TaskHistoryResponse
 from app.services import task_service
+from app.core.cache import task_cache
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -15,20 +16,30 @@ async def get_graph(
     level: str | None = Query(None),
     is_ai_utilized: bool | None = Query(None),
 ):
+    has_filters = organization or level or is_ai_utilized is not None
+
+    # 필터 없는 요청: 캐시 우선 확인
+    if not has_filters:
+        cached = task_cache.get()
+        if cached is not None:
+            return ApiResponse(success=True, data=cached)
+
     tasks = await task_service.get_all_tasks(db)
+    result = [TaskGraphItem.model_validate(t) for t in tasks]
 
-    # 필터링
+    # 필터 없는 전체 결과를 캐시에 저장
+    if not has_filters:
+        task_cache.set(result)
+
+    # 필터 적용
     if organization:
-        tasks = [t for t in tasks if t.organization == organization]
+        result = [t for t in result if t.organization == organization]
     if level:
-        tasks = [t for t in tasks if t.level == level]
+        result = [t for t in result if t.level == level]
     if is_ai_utilized is not None:
-        tasks = [t for t in tasks if t.is_ai_utilized == is_ai_utilized]
+        result = [t for t in result if t.is_ai_utilized == is_ai_utilized]
 
-    return ApiResponse(
-        success=True,
-        data=[TaskGraphItem.model_validate(t) for t in tasks],
-    )
+    return ApiResponse(success=True, data=result)
 
 
 @router.get("/{task_id}", response_model=ApiResponse[TaskDetail])
@@ -43,6 +54,7 @@ async def get_task(task_id: UUID, db: DbSession, current_user: ActiveUser):  # �
 async def create_task(data: TaskCreate, db: DbSession, current_user: EditorUser):
     try:
         task = await task_service.create_task(db, data, current_user.id)
+        task_cache.invalidate()
         return ApiResponse(success=True, data=TaskDetail.model_validate(task))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -52,6 +64,7 @@ async def create_task(data: TaskCreate, db: DbSession, current_user: EditorUser)
 async def update_task(task_id: UUID, data: TaskUpdate, db: DbSession, current_user: EditorUser):
     try:
         task = await task_service.update_task(db, task_id, data, current_user.id)
+        task_cache.invalidate()
         return ApiResponse(success=True, data=TaskDetail.model_validate(task))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -61,6 +74,7 @@ async def update_task(task_id: UUID, data: TaskUpdate, db: DbSession, current_us
 async def delete_task(task_id: UUID, db: DbSession, current_user: AdminUser):
     try:
         await task_service.delete_task(db, task_id, current_user.id)
+        task_cache.invalidate()
         return ApiResponse(success=True, data=True, message="Task deleted")
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -41,9 +41,11 @@ interface TaskState {
   };
   /** [IMP-02] L1 포커스 뷰 */
   focusedL1Id: string | null;
+  /** 마지막 fetch 시각 (중복 fetch 방지용) */
+  _lastFetchedAt: number;
 
   // Actions
-  fetchTasks: () => Promise<void>;
+  fetchTasks: (force?: boolean) => Promise<void>;
   setTasks: (tasks: TaskGraphItem[]) => void;
   selectTask: (taskId: string | null) => Promise<void>;
   toggleExpand: (nodeId: string) => void;
@@ -69,17 +71,22 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     isAiUtilized: null,
   },
   focusedL1Id: null,
+  _lastFetchedAt: 0,
 
-  fetchTasks: async () => {
+  fetchTasks: async (force = false) => {
+    // 60초 이내 재호출 방지 (force=true 시 무시)
+    const { tasks, _lastFetchedAt } = get();
+    if (!force && tasks.length > 0 && Date.now() - _lastFetchedAt < 60_000) return;
+
     set({ isLoading: true, error: null });
     try {
       const { filters } = get();
-      const tasks = await taskApi.getGraph({
+      const fetched = await taskApi.getGraph({
         organization: filters.organization || undefined,
         level: filters.level || undefined,
         is_ai_utilized: filters.isAiUtilized ?? undefined,
       });
-      set({ tasks, isLoading: false });
+      set({ tasks: fetched, isLoading: false, _lastFetchedAt: Date.now() });
     } catch (error) {
       console.error('Failed to fetch tasks:', error);
       set({ error: 'Failed to fetch tasks', isLoading: false });
@@ -209,7 +216,25 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         is_ai_utilized: data.is_ai_utilized || false,
       });
 
-      await get().fetchTasks();
+      // 낙관적 업데이트: 로컬 배열에 즉시 추가
+      const graphItem: TaskGraphItem = {
+        id: newTask.id,
+        parent_id: newTask.parent_id,
+        level: newTask.level,
+        name: newTask.name,
+        organization: newTask.organization,
+        organization_type: newTask.organization_type,
+        team: newTask.team,
+        manager_name: newTask.manager_name,
+        manager_id: newTask.manager_id,
+        keywords: newTask.keywords,
+        is_ai_utilized: newTask.is_ai_utilized,
+      };
+      set((state) => ({
+        tasks: [...state.tasks, graphItem],
+        _lastFetchedAt: Date.now(),
+      }));
+
       return newTask;
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
@@ -233,11 +258,26 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         is_ai_utilized: updates.is_ai_utilized,
       });
 
-      await get().fetchTasks();
-
-      if (get().selectedTaskId === taskId) {
-        set({ selectedTask: updatedTask });
-      }
+      // 낙관적 업데이트: 로컬 배열에서 해당 항목 교체
+      set((state) => ({
+        tasks: state.tasks.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                name: updatedTask.name,
+                organization: updatedTask.organization,
+                organization_type: updatedTask.organization_type,
+                team: updatedTask.team,
+                manager_name: updatedTask.manager_name,
+                manager_id: updatedTask.manager_id,
+                keywords: updatedTask.keywords,
+                is_ai_utilized: updatedTask.is_ai_utilized,
+              }
+            : t
+        ),
+        selectedTask: state.selectedTaskId === taskId ? updatedTask : state.selectedTask,
+        _lastFetchedAt: Date.now(),
+      }));
 
       return updatedTask;
     } catch (error) {
@@ -253,11 +293,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       await taskApi.deleteTask(taskId);
 
-      if (get().selectedTaskId === taskId) {
-        set({ selectedTaskId: null, selectedTask: null });
-      }
+      // 낙관적 업데이트: 로컬 배열에서 해당 항목 제거
+      set((state) => ({
+        tasks: state.tasks.filter((t) => t.id !== taskId),
+        selectedTaskId: state.selectedTaskId === taskId ? null : state.selectedTaskId,
+        selectedTask: state.selectedTaskId === taskId ? null : state.selectedTask,
+        _lastFetchedAt: Date.now(),
+      }));
 
-      await get().fetchTasks();
       return true;
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {

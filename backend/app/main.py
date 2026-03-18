@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -5,10 +6,26 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 from app.core.config import settings
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.api import api_router
+from app.db.session import engine
 import os
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 서버 시작 시 커넥션 풀 워밍업 — 첫 요청 지연 제거
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        pass  # DB 연결 실패해도 서버는 시작
+    yield
+    # 서버 종료 시 커넥션 풀 정리
+    await engine.dispose()
+
 
 # Swagger UI 접근 제한 (프로덕션에서는 비활성화)
 docs_url = "/docs" if settings.DEBUG else None
@@ -16,6 +33,7 @@ redoc_url = "/redoc" if settings.DEBUG else None
 
 app = FastAPI(
     title=settings.APP_NAME,
+    lifespan=lifespan,
     docs_url=docs_url,
     redoc_url=redoc_url,
     openapi_url="/openapi.json" if settings.DEBUG else None,

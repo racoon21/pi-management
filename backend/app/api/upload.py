@@ -4,6 +4,7 @@ from app.api.deps import DbSession, EditorUser
 from app.schemas.common import ApiResponse
 from app.schemas.upload import UploadPreview, DiffResult, UpsertResult
 from app.services import upload_service
+from app.core.cache import task_cache
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
@@ -104,4 +105,5 @@ async def upload_confirm(
         )
 
     result = await upload_service.upsert_tasks(db, parsed, current_user.id)
+    task_cache.invalidate()
     return ApiResponse(success=True, data=result)
