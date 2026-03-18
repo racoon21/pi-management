@@ -246,6 +246,8 @@
 ```
 pi-management/
 ├── backend/
+│   ├── Dockerfile_dev                 # 개발용 Docker 이미지
+│   ├── entrypoint_dev.sh             # 개발 진입점 (DB seed + uvicorn --reload)
 │   └── app/
 │       ├── main.py                    # FastAPI 앱 진입점 (CORS, 라우터 등록)
 │       ├── main_dev.py                # 개발용 진입점
@@ -258,67 +260,82 @@ pi-management/
 │       │   └── task.py                # Task, TaskHistory ORM 모델
 │       ├── schemas/
 │       │   ├── task.py                # TaskCreate, TaskUpdate, TaskDetail, TaskGraphItem
-│       │   ├── user.py                # User Pydantic 스키마
+│       │   ├── user.py                # User 스키마 (RegisterRequest, UserListResponse, RoleUpdateRequest, ActiveUpdateRequest)
 │       │   ├── common.py              # ApiResponse 공통 래퍼
 │       │   └── upload.py              # UploadPreview, DiffResult, UpsertResult
 │       ├── api/
-│       │   ├── auth.py                # POST /login, /refresh, /logout, GET /me
+│       │   ├── auth.py                # POST /login, /register, /refresh, /logout, GET /me
+│       │   ├── admin.py               # GET /admin/users, /admin/users/pending, PUT role/active
 │       │   ├── tasks.py               # GET /graph, GET|POST|PUT|DELETE /{id}
 │       │   ├── upload.py              # POST /upload (엑셀 업로드)
-│       │   └── deps.py                # 의존성 주입 (get_db, get_current_user)
+│       │   └── deps.py                # 의존성 주입 (CurrentUser, ActiveUser, EditorUser, AdminUser)
 │       ├── services/
 │       │   ├── task_service.py        # Task CRUD 비즈니스 로직 (이력 생성 포함)
 │       │   └── upload_service.py      # 엑셀 파싱, Diff, Upsert 로직
 │       └── db/
 │           ├── session.py             # AsyncSession, Engine 설정 (NullPool)
-│           └── seed.py                # 초기 데이터 시드 (admin 계정 + 샘플 태스크)
+│           └── seed.py                # 초기 데이터 시드 (admin/viewer/editor/pending 4개 계정)
 │
 ├── frontend/
+│   ├── Dockerfile                     # 개발용 Docker 이미지 (node:20-alpine)
 │   ├── src/
 │   │   ├── App.tsx                    # React Router 설정, QueryClient Provider
 │   │   ├── main.tsx                   # ReactDOM 진입점
 │   │   ├── index.css                  # Tailwind CSS 전역 스타일
 │   │   ├── pages/
 │   │   │   ├── LoginPage.tsx          # 로그인 페이지
+│   │   │   ├── SignUpPage.tsx         # 회원가입 페이지
+│   │   │   ├── PendingApprovalPage.tsx # 승인 대기 페이지 (role="none")
 │   │   │   ├── DashboardPage.tsx      # 대시보드 (KPI, 통계, 퀵 액션)
 │   │   │   ├── GraphPage.tsx          # 그래프 시각화 메인 페이지
 │   │   │   └── UploadPage.tsx         # 엑셀 업로드 (4단계 워크플로우)
+│   │   ├── admin/
+│   │   │   └── pages/
+│   │   │       ├── AdminPageTemplate.tsx  # Admin 페이지 공통 템플릿
+│   │   │       ├── AdminDashboardPage.tsx # Admin 대시보드 (placeholder)
+│   │   │       ├── AdminUsersPage.tsx     # 사용자 관리 (역할/활성 제어)
+│   │   │       ├── AdminRequestsPage.tsx  # 가입 승인 요청 관리
+│   │   │       ├── AdminLogsPage.tsx      # 활동 로그 (placeholder)
+│   │   │       └── index.ts
 │   │   ├── components/
+│   │   │   ├── ProtectedRoute.tsx     # 인증 가드 (role="none" → PendingApprovalPage)
+│   │   │   ├── AdminRoute.tsx         # Admin 라우트 가드 (admin role 전용)
 │   │   │   ├── layout/
 │   │   │   │   ├── MainLayout.tsx     # 전체 레이아웃 (사이드바 + 콘텐츠)
-│   │   │   │   ├── Sidebar.tsx        # 좌측 네비게이션 (접기/펼치기 지원)
+│   │   │   │   ├── Sidebar.tsx        # 좌측 네비게이션 (admin 메뉴 섹션, pending 배지)
 │   │   │   │   └── Header.tsx         # 페이지 헤더
 │   │   │   ├── graph/
 │   │   │   │   ├── TaskGraph.tsx      # ReactFlow 그래프 컨테이너
 │   │   │   │   ├── TaskNode.tsx       # 커스텀 노드 컴포넌트
 │   │   │   │   ├── MinDistanceEdge.tsx # 커스텀 엣지 (최소 거리 연결선)
 │   │   │   │   ├── FilterBar.tsx      # 필터 바 (조직/레벨/AI)
-│   │   │   │   ├── DetailSidebar.tsx  # 우측 상세 사이드바
-│   │   │   │   ├── DetailPanel.tsx    # 태스크 상세 정보 패널
+│   │   │   │   ├── DetailSidebar.tsx  # 우측 상세 패널 (권한별 버튼 표시)
+│   │   │   │   ├── DetailPanel.tsx    # 태스크 상세 정보 패널 (권한별 편집 버튼)
 │   │   │   │   ├── TaskFormModal.tsx  # 태스크 생성/수정 모달
 │   │   │   │   ├── HistoryModal.tsx   # 변경 이력 모달
-│   │   │   │   ├── ContextMenu.tsx    # 우클릭 컨텍스트 메뉴
+│   │   │   │   ├── ContextMenu.tsx    # 우클릭 컨텍스트 메뉴 (권한별 메뉴 항목)
 │   │   │   │   └── GlobalModal.tsx    # 모달 타입별 라우팅
-│   │   │   ├── shared/
-│   │   │   │   ├── Button.tsx         # 버튼 (primary/secondary/danger/ghost)
-│   │   │   │   ├── Input.tsx          # 폼 인풋 (아이콘 지원)
-│   │   │   │   ├── Modal.tsx          # 베이스 모달
-│   │   │   │   ├── ConfirmModal.tsx   # 확인 다이얼로그
-│   │   │   │   └── Badge.tsx          # 상태 배지 (default/primary/success/warning/danger/ai)
-│   │   │   └── ProtectedRoute.tsx     # 인증 가드
+│   │   │   └── shared/
+│   │   │       ├── Button.tsx         # 버튼 (primary/secondary/danger/ghost)
+│   │   │       ├── Input.tsx          # 폼 인풋 (아이콘 지원)
+│   │   │       ├── Modal.tsx          # 베이스 모달
+│   │   │       ├── ConfirmModal.tsx   # 확인 다이얼로그
+│   │   │       └── Badge.tsx          # 상태 배지 (default/primary/success/warning/danger/ai)
 │   │   ├── stores/
 │   │   │   ├── authStore.ts           # 인증 상태 (토큰, 유저, login/logout)
-│   │   │   ├── taskStore.ts           # 태스크 상태 (목록, 선택, 필터, CRUD)
+│   │   │   ├── taskStore.ts           # 태스크 상태 (목록, 선택, 필터, CRUD, 403 처리)
 │   │   │   └── modalStore.ts          # 모달 UI 상태
 │   │   ├── api/
-│   │   │   ├── client.ts              # Axios 인스턴스 (JWT 인터셉터, 401 처리)
-│   │   │   ├── authApi.ts             # 인증 API 함수
+│   │   │   ├── client.ts              # Fetch 클라이언트 (JWT Silent Refresh, ApiError)
+│   │   │   ├── authApi.ts             # 인증 API (login, register, refresh, getMe)
+│   │   │   ├── adminApi.ts            # Admin API (사용자 목록/승인/역할 변경)
 │   │   │   ├── taskApi.ts             # 태스크 API 함수
 │   │   │   └── uploadApi.ts           # 업로드 API 함수
 │   │   ├── types/
-│   │   │   └── task.ts                # TaskGraphItem, TaskDetail, TaskHistory 등
+│   │   │   └── task.ts                # TaskGraphItem, TaskDetail, TaskHistory, User 등
 │   │   ├── utils/
-│   │   │   └── layout.ts             # 하이브리드 레이아웃 알고리즘 (Radial + Hierarchical)
+│   │   │   ├── layout.ts             # 하이브리드 레이아웃 알고리즘 (Radial + Hierarchical)
+│   │   │   └── permissions.ts        # 역할별 권한 헬퍼 (canCreate/Edit/Delete, canUpload, isAdmin)
 │   │   ├── data/
 │   │   │   └── mockData.ts           # 목 데이터 (개발/테스트용)
 │   │   └── assets/                    # 정적 리소스
@@ -342,21 +359,35 @@ pi-management/
 **파일**: `frontend/src/App.tsx`
 
 ```
+# 공개 라우트
 /login              → LoginPage            (공개)
-/                   → DashboardPage         (인증 필요, MainLayout 래핑)
-/graph              → GraphPage             (인증 필요, MainLayout 래핑)
-/tasks              → GraphPage             (인증 필요, /graph 별칭)
-/history            → GraphPage             (인증 필요, /graph 별칭)
-/users              → DashboardPage         (인증 필요, 미구현 - 홈 별칭)
-/settings           → DashboardPage         (인증 필요, 미구현 - 홈 별칭)
-/upload             → UploadPage            (인증 필요, MainLayout 래핑)
+/signup             → SignUpPage           (공개)
+
+# 인증 필요 라우트 (ProtectedRoute 래핑)
+/                   → DashboardPage         (MainLayout 래핑)
+/graph              → GraphPage             (MainLayout 래핑)
+/tasks              → GraphPage             (/graph 별칭)
+/history            → GraphPage             (/graph 별칭)
+/users              → DashboardPage         (미구현 - 홈 별칭)
+/settings           → DashboardPage         (미구현 - 홈 별칭)
+/upload             → UploadPage            (MainLayout 래핑, editor/admin만 이용 가능)
+
+# Admin 전용 라우트 (AdminRoute 래핑, admin role만 접근)
+/admin              → AdminDashboardPage    (placeholder)
+/admin/users        → AdminUsersPage        (사용자 관리)
+/admin/requests     → AdminRequestsPage     (가입 승인)
+/admin/logs         → AdminLogsPage         (placeholder)
+
 *                   → / 리다이렉트           (catch-all)
 ```
 
 **인증 흐름**:
 1. `ProtectedRoute`가 `authStore.isAuthenticated` 확인
 2. 미인증 시 `/login`으로 리다이렉트
-3. API 401 응답 시 자동 로그아웃 + `/login` 이동
+3. `user.role === 'none'` → `PendingApprovalPage` 렌더링 (30초 폴링)
+4. `AdminRoute`가 `user.role === 'admin'` 확인, 비 admin → `/` 리다이렉트
+5. API 401 응답 시 Silent Refresh 시도 → 실패 시 로그아웃 + `/login` 이동
+6. `/auth/login`, `/auth/register` 401은 Silent Refresh 건너뛰고 에러 메시지 표시
 
 ---
 
@@ -426,7 +457,7 @@ pi-management/
 | `password_hash` | VARCHAR(255) | bcrypt 해시 |
 | `name` | VARCHAR(50) | 이름 |
 | `organization` | VARCHAR(100) | 소속 조직 |
-| `role` | VARCHAR(20) | admin / editor / viewer |
+| `role` | VARCHAR(20) | admin / editor / viewer / none (승인 대기) |
 | `is_active` | BOOLEAN | 활성 상태 |
 | `created_at` | TIMESTAMPTZ | 생성일시 |
 
@@ -511,7 +542,7 @@ interface User {
   employee_id: string;
   name: string;
   organization: string;
-  role: 'admin' | 'editor' | 'viewer';
+  role: 'admin' | 'editor' | 'viewer' | 'none';
 }
 ```
 
@@ -535,35 +566,46 @@ interface ApiResponse<T> {
 | Method | Endpoint | 설명 | 인증 | Rate Limit |
 |--------|----------|------|------|------------|
 | POST | `/api/auth/login` | 사번+비밀번호 → JWT 발급 | X | 5회/분 |
+| POST | `/api/auth/register` | 회원가입 → role="none"으로 생성 | X | 3회/분 |
 | POST | `/api/auth/refresh` | Refresh Token → 새 Access Token | X | 10회/분 |
-| POST | `/api/auth/logout` | 토큰 무효화 | O | - |
-| GET | `/api/auth/me` | 현재 사용자 정보 | O | - |
+| POST | `/api/auth/logout` | 토큰 무효화 | O (CurrentUser) | - |
+| GET | `/api/auth/me` | 현재 사용자 정보 (role="none" 포함) | O (CurrentUser) | - |
 
 ### 7.3 태스크 API
 
-| Method | Endpoint | 설명 | 인증 |
+| Method | Endpoint | 설명 | 권한 |
 |--------|----------|------|------|
-| GET | `/api/tasks/graph` | 그래프 렌더링용 경량 Flat List | O |
-| GET | `/api/tasks/{id}` | 태스크 상세 정보 | O |
-| POST | `/api/tasks` | 태스크 생성 (레벨 자동 결정) | O |
-| PUT | `/api/tasks/{id}` | 태스크 수정 (이력 스냅샷 자동 생성) | O |
-| DELETE | `/api/tasks/{id}` | Soft Delete (자식 있으면 거부) | O |
-| GET | `/api/tasks/{id}/history` | 변경 이력 조회 | O |
+| GET | `/api/tasks/graph` | 그래프 렌더링용 경량 Flat List | ActiveUser (viewer+) |
+| GET | `/api/tasks/{id}` | 태스크 상세 정보 | ActiveUser (viewer+) |
+| POST | `/api/tasks` | 태스크 생성 (레벨 자동 결정) | EditorUser (editor/admin) |
+| PUT | `/api/tasks/{id}` | 태스크 수정 (이력 스냅샷 자동 생성) | EditorUser (editor/admin) |
+| DELETE | `/api/tasks/{id}` | Soft Delete (자식 있으면 거부) | AdminUser (admin) |
+| GET | `/api/tasks/{id}/history` | 변경 이력 조회 | ActiveUser (viewer+) |
+| GET | `/api/tasks/{id}/descendants` | 하위 노드 목록 조회 | ActiveUser (viewer+) |
 
 **GET /api/tasks/graph 쿼리 파라미터**:
 - `organization`: 조직 필터
 - `level`: 레벨 필터
 - `is_ai_utilized`: AI 활용 여부 필터
 
-### 7.4 업로드 API
+### 7.4 Admin API
 
-| Method | Endpoint | 설명 | 인증 |
+| Method | Endpoint | 설명 | 권한 |
 |--------|----------|------|------|
-| POST | `/api/upload` | 엑셀 파일 업로드 | O |
+| GET | `/api/admin/users` | 전체 사용자 목록 (role/is_active 필터) | AdminUser |
+| GET | `/api/admin/users/pending` | role="none" 사용자만 조회 | AdminUser |
+| PUT | `/api/admin/users/{id}/role` | 사용자 역할 변경 (자기 자신 불가) | AdminUser |
+| PUT | `/api/admin/users/{id}/active` | 사용자 활성 상태 토글 (자기 자신 불가) | AdminUser |
+
+### 7.5 업로드 API
+
+| Method | Endpoint | 설명 | 권한 |
+|--------|----------|------|------|
+| POST | `/api/upload` | 엑셀 파일 업로드 | EditorUser (editor/admin) |
 
 업로드 API는 내부적으로 preview → diff → confirm 3단계 처리.
 
-### 7.5 헬스체크
+### 7.6 헬스체크
 
 | Method | Endpoint | 설명 |
 |--------|----------|------|
@@ -587,12 +629,14 @@ interface ApiResponse<T> {
 | L3 | 부모 L2 외측 | 240px |
 | L4 | 부모 L3 외측 | 220px (>4개 시 2열 그리드) |
 
-### 8.2 Axios 인터셉터 (JWT 자동 갱신)
+### 8.2 Fetch 클라이언트 (JWT Silent Refresh)
 
 **파일**: `frontend/src/api/client.ts`
 
-1. **Request Interceptor**: `authStore.accessToken`을 `Authorization: Bearer` 헤더에 자동 주입
-2. **Response Interceptor**: 401 응답 시 refresh token으로 새 access token 발급 시도 → 실패 시 로그아웃
+- `localStorage`에서 `auth-storage` 읽어 `Authorization: Bearer` 헤더 자동 주입
+- 401 응답 시 Silent Refresh 시도 (동시 요청 큐잉으로 중복 refresh 방지)
+- `/auth/login`, `/auth/register` 엔드포인트의 401은 Silent Refresh 건너뛰고 `ApiError` throw
+- `ApiError` 클래스: `status` 필드로 HTTP 상태 코드 노출 (403 등 권한 에러 처리용)
 
 ### 8.3 PgBouncer 호환 DB 연결
 
@@ -609,6 +653,34 @@ Task 수정 시 단일 트랜잭션으로 처리:
 1. 현재 상태를 JSONB 스냅샷으로 `task_histories`에 저장
 2. `tasks` 테이블 업데이트 (version +1)
 3. 커밋
+
+### 8.5 역할 기반 접근 제어 (RBAC)
+
+**Backend 의존성 주입** (`backend/app/api/deps.py`):
+
+| Dependency | 설명 | 허용 role |
+|------------|------|-----------|
+| `CurrentUser` | 인증만 확인 (role="none" 포함) | all |
+| `ActiveUser` | 인증 + role="none" 차단 | viewer, editor, admin |
+| `EditorUser` | 편집 권한 | editor, admin |
+| `AdminUser` | 관리자 권한 | admin |
+
+**Frontend 권한 헬퍼** (`frontend/src/utils/permissions.ts`):
+
+```typescript
+permissions.canCreateTask(user) // editor, admin
+permissions.canEditTask(user)   // editor, admin
+permissions.canDeleteTask(user) // admin
+permissions.canUpload(user)     // editor, admin
+permissions.isAdmin(user)       // admin
+```
+
+**UI 권한 반영**:
+- `ContextMenu`: viewer → 하위 추가/수정/삭제 숨김, editor → 삭제 숨김
+- `DetailSidebar`, `DetailPanel`: 수정/삭제 버튼 권한별 표시
+- `UploadPage`: viewer → "권한이 없습니다" 안내 표시
+- `Sidebar`: admin에게만 Admin 메뉴 섹션 표시, pending 수 배지
+- `taskStore`: 403 응답 시 "권한이 없습니다" 토스트 표시
 
 ---
 
@@ -644,9 +716,12 @@ cd frontend && npm install && npm run dev
 
 ### 10.2 테스트 계정
 
-| 사번 | 비밀번호 | 권한 |
-|------|---------|------|
-| admin | admin123 | admin |
+| 사번 | 비밀번호 | 역할 | 설명 |
+|------|---------|------|------|
+| admin | admin123 | admin | 전체 기능 + Admin 메뉴 |
+| editor | editor123 | editor | 태스크 생성/수정/업로드 가능, 삭제 불가 |
+| viewer | viewer123 | viewer | 조회만 가능 |
+| pending | pending123 | none | 승인 대기 (PendingApprovalPage 표시) |
 
 ### 10.3 빌드
 
@@ -722,10 +797,13 @@ npm run build    # tsc -b && vite build → dist/
 
 ### 구현 완료
 
-- [x] JWT 인증 시스템 (로그인, 토큰 갱신, 로그아웃)
+- [x] JWT 인증 시스템 (로그인, 토큰 갱신, 로그아웃, Silent Refresh)
+- [x] 회원가입 + 승인 대기 흐름 (role="none" → admin 승인 → role 전환)
+- [x] 역할 기반 접근 제어 (RBAC: admin/editor/viewer/none)
+- [x] Admin 사용자 관리 (역할 변경, 활성 토글, 가입 승인/거절)
 - [x] 대시보드 페이지 (KPI 통계, 레벨 분포, 퀵 액션, 최근 태스크)
 - [x] 인터랙티브 그래프 시각화 (하이브리드 레이아웃)
-- [x] 태스크 CRUD (생성, 수정, 삭제, 상세 조회)
+- [x] 태스크 CRUD (생성, 수정, 삭제, 상세 조회) + 권한별 UI 제어
 - [x] 변경 이력 관리 (JSONB 스냅샷)
 - [x] 조직/레벨/AI 필터링 (조상 노드 자동 유지)
 - [x] 노드 확장/축소 (개별 + 전체)
@@ -733,15 +811,16 @@ npm run build    # tsc -b && vite build → dist/
 - [x] 반응형 레이아웃 (사이드바 접기/펼치기)
 - [x] Cloudflare + Render + Supabase 배포
 - [x] PgBouncer 호환 DB 연결
+- [x] Docker Compose 개발 환경 (DB + Backend + Frontend)
 
 ### 미구현 / 개선 필요
 
-- [ ] `/users` 페이지: 사용자 관리 UI (현재 DashboardPage 별칭)
 - [ ] `/settings` 페이지: 설정 UI (현재 DashboardPage 별칭)
+- [ ] Admin 대시보드: 통계/차트 실제 데이터 연동 (현재 placeholder)
+- [ ] Admin 활동 로그: 사용자 활동 이력 (현재 placeholder)
 - [ ] Redis 기반 토큰 블랙리스트 (현재 인메모리)
 - [ ] 노드 드래그 앤 드롭 계층 이동
 - [ ] 키워드/담당자 통합 검색
-- [ ] 권한별 접근 제어 세분화 (editor/viewer 역할 분리)
 - [ ] 대량 데이터(3,000+ 노드) 성능 최적화 테스트
 - [ ] E2E 테스트 및 단위 테스트
 - [ ] CI/CD 파이프라인
@@ -778,47 +857,33 @@ npm run build    # tsc -b && vite build → dist/
 
 ---
 
-## 15. Admin 브랜치 작업 메모
+## 15. 브랜치 작업 이력
 
-### 2026-03-17 - `feature/admin-route/navigation-shell`
+### 2026-03-17 - `feature/admin-route/navigation-shell` (merged)
 
-**목적**
-- 같은 로그인, 같은 포털 구조 안에서 `admin` 계정에게만 admin 메뉴와 admin placeholder 페이지를 노출하는 integrated admin navigation shell 구현
+- Admin 전용 라우트 셸 (`/admin/*`) + `AdminRoute` 가드
+- 사이드바 admin 메뉴 섹션 추가
+- Admin placeholder 페이지 4종 (대시보드, 사용자, 로그, 요청)
 
-**변경 파일**
-- `frontend/src/App.tsx`
-- `frontend/src/components/AdminRoute.tsx`
-- `frontend/src/components/layout/Sidebar.tsx`
-- `frontend/src/admin/pages/AdminPageTemplate.tsx`
-- `frontend/src/admin/pages/AdminDashboardPage.tsx`
-- `frontend/src/admin/pages/AdminUsersPage.tsx`
-- `frontend/src/admin/pages/AdminLogsPage.tsx`
-- `frontend/src/admin/pages/AdminRequestsPage.tsx`
-- `frontend/src/admin/pages/index.ts`
+### 2026-03-18 - `feature/user/sign-in` (merged)
 
-**구현 내용**
-- `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` 라우트 추가
-- `AdminRoute` 추가: `admin` role만 admin 경로 접근 가능
-- 사이드바에 `admin` 계정 전용 메뉴 섹션 추가
-- admin placeholder 페이지 4종 추가
-- 기존 user 페이지와 기존 user 메뉴 동작은 유지
+- `POST /api/auth/register` 회원가입 엔드포인트 (role="none")
+- `SignUpPage`, `PendingApprovalPage` 프론트엔드 페이지
+- `ProtectedRoute`에서 role="none" → PendingApprovalPage 렌더링
+- Backend Admin API (`/api/admin/users/*`) 4개 엔드포인트
+- `AdminUsersPage`, `AdminRequestsPage` 실제 데이터 연동
+- Seed 계정 4종 (admin/viewer/editor/pending)
 
-**프론트엔드 QA 완료**
-- `admin` 로그인 시 Admin 메뉴 노출 확인
-- `viewer`, `editor` 로그인 시 Admin 메뉴 비노출 확인
-- `admin`으로 `/admin`, `/admin/users`, `/admin/logs`, `/admin/requests` 진입 확인
-- `viewer`, `editor`에서 `/admin` 직접 접근 시 홈 리다이렉트 확인
-- 기존 대시보드, 그래프, 업로드 등 기존 user 화면 동작 유지 확인
-- `frontend/.env.local`을 `http://localhost:8000/api`로 수정한 뒤 dev 서버 재기동 후 브라우저 로그인 흐름 재검증 완료
+### 2026-03-18 - `feature/user/role-dependency-injection` (merged)
 
-**백엔드 QA 완료**
-- `GET /health` 200 OK 확인
-- `POST /api/auth/login`으로 `admin`, `viewer`, `editor` 로그인 성공 확인
-- `GET /api/auth/me`로 각 계정의 role이 `admin`, `viewer`, `editor`로 정확히 반환되는 것 확인
-- Supabase pooler 연결 기준으로 로컬 백엔드 기동 및 인증 흐름 검증 완료
-- 브라우저 로그인 실패 원인이 자격 증명이 아니라 잘못된 프론트 API base URL(`/auth/login` 호출)임을 확인하고 수정 반영
+- Backend 의존성 주입 리팩토링: `CurrentUser` → `ActiveUser`/`EditorUser`/`AdminUser`
+- Tasks API 권한 매트릭스 적용 (GET: ActiveUser, POST/PUT: EditorUser, DELETE: AdminUser)
+- Frontend `permissions.ts` 헬퍼 + UI 컴포넌트 권한 반영
+- `ApiError` 클래스 + 403 에러 토스트 처리
 
-**주의**
-- 이번 브랜치에는 백엔드 `/api/admin/*` 구현 없음
-- DB schema 변경 없음
-- admin 화면은 placeholder 상태이며 실제 데이터 연동은 다음 브랜치에서 진행
+### 2026-03-18 - `fix/user/pending` (current)
+
+- `get_current_user`에서 role="none" 차단 분리 → `get_active_user`로 이동
+- `/auth/me`가 role="none" 사용자에게도 정상 응답하도록 수정
+- 로그인 실패 401이 Silent Refresh/리다이렉트 없이 에러 메시지 표시
+- 로그인 페이지 기본 계정 힌트(admin/admin123) 제거
