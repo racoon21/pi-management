@@ -3,6 +3,8 @@ import { X, Edit, History, Save, XCircle, Sparkles, Calendar, User, Building, Ta
 import { clsx } from 'clsx';
 import { useTaskStore } from '../../stores/taskStore';
 import { useModalStore } from '../../stores/modalStore';
+import { useAuthStore } from '../../stores/authStore';
+import { permissions } from '../../utils/permissions';
 import { Button } from '../shared/Button';
 import { Input } from '../shared/Input';
 import { Badge } from '../shared/Badge';
@@ -13,6 +15,8 @@ import toast from 'react-hot-toast';
 export const DetailPanel = () => {
   const { selectedTask, selectedTaskId, selectTask, updateTask } = useTaskStore();
   const { openModal } = useModalStore();
+  const authUser = useAuthStore((s) => s.user);
+  const canEdit = permissions.canEditTask(authUser);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'detail' | 'history'>('detail');
@@ -317,14 +321,16 @@ export const DetailPanel = () => {
               >
                 이력
               </Button>
-              <Button
-                variant="primary"
-                className="flex-1"
-                icon={Edit}
-                onClick={handleEdit}
-              >
-                수정
-              </Button>
+              {canEdit && (
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  icon={Edit}
+                  onClick={handleEdit}
+                >
+                  수정
+                </Button>
+              )}
             </div>
           )}
         </div>

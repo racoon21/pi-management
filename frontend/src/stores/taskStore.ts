@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { TaskGraphItem, TaskDetail, OrganizationType } from '../types/task';
 import { taskApi } from '../api';
+import { ApiError } from '../api/client';
+import toast from 'react-hot-toast';
 
 interface TaskCreateData {
   parent_id: string | null;
@@ -210,6 +212,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       await get().fetchTasks();
       return newTask;
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        toast.error('권한이 없습니다. 관리자에게 문의하세요.');
+      }
       console.error('Failed to create task:', error);
       throw error;
     }
@@ -236,6 +241,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
       return updatedTask;
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        toast.error('권한이 없습니다. 관리자에게 문의하세요.');
+      }
       console.error('Failed to update task:', error);
       throw error;
     }
@@ -252,6 +260,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       await get().fetchTasks();
       return true;
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        toast.error('권한이 없습니다. 관리자에게 문의하세요.');
+      }
       console.error('Failed to delete task:', error);
       throw error;
     }

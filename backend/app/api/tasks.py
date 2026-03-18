@@ -1,6 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Query
-from app.api.deps import DbSession, CurrentUser
+from app.api.deps import DbSession, CurrentUser, EditorUser, AdminUser
 from app.schemas import ApiResponse, TaskGraphItem, TaskDetail, TaskCreate, TaskUpdate, TaskHistoryResponse
 from app.services import task_service
 
@@ -40,7 +40,7 @@ async def get_task(task_id: UUID, db: DbSession, current_user: CurrentUser):  # 
 
 
 @router.post("", response_model=ApiResponse[TaskDetail])
-async def create_task(data: TaskCreate, db: DbSession, current_user: CurrentUser):
+async def create_task(data: TaskCreate, db: DbSession, current_user: EditorUser):
     try:
         task = await task_service.create_task(db, data, current_user.id)
         return ApiResponse(success=True, data=TaskDetail.model_validate(task))
@@ -49,7 +49,7 @@ async def create_task(data: TaskCreate, db: DbSession, current_user: CurrentUser
 
 
 @router.put("/{task_id}", response_model=ApiResponse[TaskDetail])
-async def update_task(task_id: UUID, data: TaskUpdate, db: DbSession, current_user: CurrentUser):
+async def update_task(task_id: UUID, data: TaskUpdate, db: DbSession, current_user: EditorUser):
     try:
         task = await task_service.update_task(db, task_id, data, current_user.id)
         return ApiResponse(success=True, data=TaskDetail.model_validate(task))
@@ -58,7 +58,7 @@ async def update_task(task_id: UUID, data: TaskUpdate, db: DbSession, current_us
 
 
 @router.delete("/{task_id}", response_model=ApiResponse[bool])
-async def delete_task(task_id: UUID, db: DbSession, current_user: CurrentUser):
+async def delete_task(task_id: UUID, db: DbSession, current_user: AdminUser):
     try:
         await task_service.delete_task(db, task_id, current_user.id)
         return ApiResponse(success=True, data=True, message="Task deleted")

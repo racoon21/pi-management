@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuthStore } from '../../stores/authStore';
+import { permissions } from '../../utils/permissions';
 import { adminApi } from '../../api/adminApi';
 
 interface NavItem {
@@ -23,10 +24,10 @@ interface NavItem {
   badge?: string;
 }
 
-const mainNavItems: NavItem[] = [
+const getMainNavItems = (canUpload: boolean): NavItem[] => [
   { icon: LayoutDashboard, label: '대시보드', path: '/' },
   { icon: Network, label: '업무 그래프', path: '/graph' },
-  { icon: Upload, label: '엑셀 업로드', path: '/upload' },
+  ...(canUpload ? [{ icon: Upload, label: '엑셀 업로드', path: '/upload' }] : []),
 ];
 
 const getAdminNavItems = (pendingCount: number): NavItem[] => [
@@ -116,7 +117,7 @@ export const Sidebar = () => {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         <div className="space-y-1">
-          {mainNavItems.map((item) => (
+          {getMainNavItems(permissions.canUpload(user)).map((item) => (
             <NavLink key={item.path} item={item} />
           ))}
         </div>
