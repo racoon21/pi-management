@@ -1,6 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Query
-from app.api.deps import DbSession, CurrentUser, EditorUser, AdminUser
+from app.api.deps import DbSession, ActiveUser, EditorUser, AdminUser
 from app.schemas import ApiResponse, TaskGraphItem, TaskDetail, TaskCreate, TaskUpdate, TaskHistoryResponse
 from app.services import task_service
 
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 @router.get("/graph", response_model=ApiResponse[list[TaskGraphItem]])
 async def get_graph(
     db: DbSession,
-    current_user: CurrentUser,  # 인증 필수
+    current_user: ActiveUser,  # 인증 필수
     organization: str | None = Query(None),
     level: str | None = Query(None),
     is_ai_utilized: bool | None = Query(None),
@@ -32,7 +32,7 @@ async def get_graph(
 
 
 @router.get("/{task_id}", response_model=ApiResponse[TaskDetail])
-async def get_task(task_id: UUID, db: DbSession, current_user: CurrentUser):  # 인증 필수
+async def get_task(task_id: UUID, db: DbSession, current_user: ActiveUser):  # 인증 필수
     task = await task_service.get_task_by_id(db, task_id)
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
@@ -67,7 +67,7 @@ async def delete_task(task_id: UUID, db: DbSession, current_user: AdminUser):
 
 
 @router.get("/{task_id}/descendants", response_model=ApiResponse[list[TaskGraphItem]])
-async def get_descendants(task_id: UUID, db: DbSession, current_user: CurrentUser):
+async def get_descendants(task_id: UUID, db: DbSession, current_user: ActiveUser):
     """[IMP-07] 하위 노드 목록 조회 (cascade 삭제 전 확인용)"""
     task = await task_service.get_task_by_id(db, task_id)
     if not task:
@@ -80,7 +80,7 @@ async def get_descendants(task_id: UUID, db: DbSession, current_user: CurrentUse
 
 
 @router.get("/{task_id}/history", response_model=ApiResponse[list[TaskHistoryResponse]])
-async def get_history(task_id: UUID, db: DbSession, current_user: CurrentUser):  # 인증 필수
+async def get_history(task_id: UUID, db: DbSession, current_user: ActiveUser):  # 인증 필수
     histories = await task_service.get_task_histories(db, task_id)
     return ApiResponse(
         success=True,

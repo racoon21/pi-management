@@ -36,9 +36,15 @@ async def get_current_user(
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
+    return user
+
+
+async def get_active_user(
+    user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """role='none' 사용자 차단 — /me 이외의 보호 엔드포인트에서 사용"""
     if user.role == "none":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account pending approval")
-
     return user
 
 
@@ -55,6 +61,7 @@ def require_role(required_roles: list[str]):
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+ActiveUser = Annotated[User, Depends(get_active_user)]
 AdminUser = Annotated[User, Depends(require_role(["admin"]))]
 EditorUser = Annotated[User, Depends(require_role(["admin", "editor"]))]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
