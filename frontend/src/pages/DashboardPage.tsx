@@ -55,10 +55,11 @@ export const DashboardPage = () => {
     // 조직 단위: L2 기준
     const l2Orgs = [...new Set(tasks.filter((t) => t.level === 'L2').map((t) => t.name))];
 
-    const total = tasks.length;
+    // Root 제외 전체 노드 수
+    const totalExcludingRoot = tasks.filter((t) => t.level !== 'Root').length;
 
     return {
-      total,
+      total: totalExcludingRoot,
       byLevel,
       l4Total: l4Tasks.length,
       l4AiCount,
@@ -70,7 +71,6 @@ export const DashboardPage = () => {
 
   // 조직(L2)별 L4 업무 수 및 AI 활용 수
   const orgStats = useMemo(() => {
-    // L2 노드별로 하위 L4 집계
     const l2Tasks = tasks.filter((t) => t.level === 'L2');
 
     // 부모→자식 맵 구축
@@ -102,7 +102,8 @@ export const DashboardPage = () => {
           }
         }
       }
-      return { name: l2.name, l4Count, l4AiCount };
+      const aiPercent = l4Count > 0 ? Math.round((l4AiCount / l4Count) * 100) : 0;
+      return { name: l2.name, l4Count, l4AiCount, aiPercent };
     }).sort((a, b) => b.l4Count - a.l4Count).slice(0, 8);
   }, [tasks]);
 
@@ -124,27 +125,21 @@ export const DashboardPage = () => {
       <Header title="대시보드" subtitle={`안녕하세요, ${user?.name}님`} />
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Welcome Banner */}
-        <div className="bg-gradient-to-br from-[#5E3D8F] to-[#7952B3] rounded-2xl p-6 text-white relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute -right-10 -top-10 w-60 h-60 rounded-full bg-white" />
-            <div className="absolute -left-5 -bottom-5 w-40 h-40 rounded-full bg-white" />
-          </div>
-          <div className="relative">
-            <h2 className="text-2xl font-bold mb-2">전사 업무 프로세스 관리 시스템</h2>
-            <p className="text-white/80 mb-4">
-              SK브로드밴드의 모든 업무를 계층적으로 관리하고 추적하세요.
-            </p>
-            <Button
-              variant="secondary"
-              icon={ArrowRight}
-              iconPosition="right"
-              onClick={() => navigate('/graph')}
-              className="!bg-white !text-[#5E3D8F] hover:!bg-white/90"
-            >
-              업무 그래프 보기
-            </Button>
-          </div>
+        {/* Welcome Banner - 단색 배경, 그라데이션 없음 */}
+        <div className="bg-[#5E3D8F] rounded-2xl p-6 text-white">
+          <h2 className="text-2xl font-bold mb-2">전사 업무 프로세스 관리 시스템</h2>
+          <p className="text-white/80 mb-4">
+            SK브로드밴드의 모든 업무를 계층적으로 관리하고 추적하세요.
+          </p>
+          <Button
+            variant="secondary"
+            icon={ArrowRight}
+            iconPosition="right"
+            onClick={() => navigate('/graph')}
+            className="!bg-white !text-[#5E3D8F]"
+          >
+            업무 그래프 보기
+          </Button>
         </div>
 
         {/* Stats Grid */}
@@ -160,7 +155,7 @@ export const DashboardPage = () => {
             label="AI 활용률 (L4)"
             value={`${stats.l4AiPercentage}%`}
             subValue={`${stats.l4AiCount} / ${stats.l4Total} 건`}
-            color="bg-gradient-to-r from-purple-500 to-pink-500"
+            color="bg-[#7259D9]"
           />
           <StatCard
             icon={Building}
@@ -172,20 +167,20 @@ export const DashboardPage = () => {
             icon={BarChart3}
             label="L4 업무"
             value={(stats.byLevel['L4'] || 0).toLocaleString()}
-            color="bg-[#7259D9]"
+            color="bg-[#191927]"
           />
         </div>
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Level Distribution */}
+          {/* Level Distribution - Root 제외 */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Layers size={20} className="text-[#5E3D8F]" />
               레벨별 분포
             </h3>
             <div className="space-y-3">
-              {['Root', 'L1', 'L2', 'L3', 'L4'].map((level) => {
+              {['L1', 'L2', 'L3', 'L4'].map((level) => {
                 const count = stats.byLevel[level] || 0;
                 const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
                 return (
@@ -214,7 +209,7 @@ export const DashboardPage = () => {
             </div>
           </div>
 
-          {/* Organization Stats (L2 기준) */}
+          {/* Organization Stats (L2 기준) - 레벨별 분포와 동일 디자인 */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <PieChart size={20} className="text-[#00D7D2]" />
@@ -225,33 +220,24 @@ export const DashboardPage = () => {
             ) : (
               <div className="space-y-3">
                 {orgStats.map((org) => {
-                  const maxCount = orgStats[0]?.l4Count || 1;
-                  const barWidth = (org.l4Count / maxCount) * 100;
                   return (
                     <div key={org.name} className="flex items-center gap-3">
-                      <span className="w-28 text-sm text-gray-700 truncate font-medium" title={org.name}>
+                      <span
+                        className="w-28 text-sm font-semibold px-2 py-0.5 rounded truncate text-center"
+                        style={{ backgroundColor: '#B8B3D0' + '30', color: '#6B5B8D' }}
+                        title={org.name}
+                      >
                         {org.name}
                       </span>
-                      <div className="flex-1 h-7 bg-gray-100 rounded-full overflow-hidden relative">
+                      <div className="flex-1 h-7 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-[#00D7D2]/80 transition-all duration-700"
-                          style={{ width: `${Math.max(barWidth, 2)}%` }}
+                          className="h-full rounded-full bg-[#B8B3D0] transition-all duration-700"
+                          style={{ width: `${Math.max(org.aiPercent, 1)}%` }}
                         />
-                        {org.l4AiCount > 0 && (
-                          <div
-                            className="absolute top-0 left-0 h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 opacity-70 transition-all duration-700"
-                            style={{ width: `${Math.max((org.l4AiCount / maxCount) * 100, 1)}%` }}
-                          />
-                        )}
                       </div>
-                      <div className="w-20 text-right">
-                        <span className="text-sm font-medium text-gray-700">{org.l4Count}</span>
-                        {org.l4AiCount > 0 && (
-                          <span className="text-xs text-purple-500 ml-1">
-                            <Sparkles size={10} className="inline" /> {org.l4AiCount}
-                          </span>
-                        )}
-                      </div>
+                      <span className="w-24 text-sm text-gray-600 text-right font-medium">
+                        {org.l4Count.toLocaleString()} <span className="text-gray-400 text-xs">(AI {org.aiPercent}%)</span>
+                      </span>
                     </div>
                   );
                 })}
