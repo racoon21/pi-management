@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuthStore } from '../../stores/authStore';
+import { adminApi } from '../../api/adminApi';
 
 interface NavItem {
   icon: React.ElementType;
@@ -28,19 +29,25 @@ const mainNavItems: NavItem[] = [
   { icon: Upload, label: '엑셀 업로드', path: '/upload' },
 ];
 
-const adminNavItems: NavItem[] = [
+const getAdminNavItems = (pendingCount: number): NavItem[] => [
   { icon: Shield, label: '관리자 홈', path: '/admin' },
   { icon: Users, label: '사용자 관리', path: '/admin/users' },
   { icon: ScrollText, label: '활동 로그', path: '/admin/logs' },
-  { icon: ClipboardList, label: '운영 요청', path: '/admin/requests' },
+  { icon: ClipboardList, label: '운영 요청', path: '/admin/requests', badge: pendingCount > 0 ? String(pendingCount) : undefined },
 ];
 
 export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    adminApi.getPendingUsers().then((users) => setPendingCount(users.length)).catch(() => {});
+  }, [isAdmin]);
 
   const handleLogout = () => {
     logout();
@@ -121,7 +128,7 @@ export const Sidebar = () => {
                 Admin
               </p>
             )}
-            {adminNavItems.map((item) => (
+            {getAdminNavItems(pendingCount).map((item) => (
               <NavLink key={item.path} item={item} />
             ))}
           </div>

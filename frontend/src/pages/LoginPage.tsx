@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { User, Lock, LogIn } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Input } from '../components/shared/Input';
@@ -143,10 +143,10 @@ export const LoginPage = () => {
           </div>
 
           <p className="text-center text-gray-500 text-sm mt-6">
-            문제가 있으신가요?{' '}
-            <a href="#" className="text-[#7952B3] hover:underline">
-              관리자에게 문의하세요
-            </a>
+            계정이 없으신가요?{' '}
+            <Link to="/signup" className="text-[#7952B3] hover:underline font-medium">
+              회원가입
+            </Link>
           </p>
         </div>
       </div>
