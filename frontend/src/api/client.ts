@@ -97,23 +97,22 @@ class ApiClient {
       headers: this.getAuthHeaders(),
     });
 
-    if (response.status === 401 && !isRetry) {
-      // Silent Refresh 시도 (동시 요청 큐잉)
-      if (!refreshPromise) {
-        refreshPromise = silentRefresh().finally(() => { refreshPromise = null; });
+    const isAuthEndpoint = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register');
+
+    if (response.status === 401 && !isAuthEndpoint) {
+      if (!isRetry) {
+        // Silent Refresh 시도 (동시 요청 큐잉)
+        if (!refreshPromise) {
+          refreshPromise = silentRefresh().finally(() => { refreshPromise = null; });
+        }
+        const refreshed = await refreshPromise;
+
+        if (refreshed) {
+          // 새 토큰으로 원래 요청 재시도
+          return this.request<T>(endpoint, options, true);
+        }
       }
-      const refreshed = await refreshPromise;
 
-      if (refreshed) {
-        // 새 토큰으로 원래 요청 재시도
-        return this.request<T>(endpoint, options, true);
-      }
-
-      this.handleUnauthorized();
-      throw new Error('Unauthorized');
-    }
-
-    if (response.status === 401) {
       this.handleUnauthorized();
       throw new Error('Unauthorized');
     }

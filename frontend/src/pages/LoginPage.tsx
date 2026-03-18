@@ -8,7 +8,7 @@ import { Button } from '../components/shared/Button';
 export const LoginPage = () => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const [employeeId, setEmployeeId] = useState('admin');
+  const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -135,11 +135,6 @@ export const LoginPage = () => {
               </Button>
             </form>
 
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 text-center">
-                <span className="font-medium">기본 계정:</span> admin / admin123
-              </p>
-            </div>
           </div>
 
           <p className="text-center text-gray-500 text-sm mt-6">
