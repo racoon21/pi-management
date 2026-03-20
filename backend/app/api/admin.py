@@ -1,11 +1,85 @@
+from datetime import datetime, timedelta
 from uuid import UUID
-from fastapi import APIRouter, HTTPException, status, Query
-from sqlalchemy import select
-from app.api.deps import DbSession, AdminUser
+
+from fastapi import APIRouter, HTTPException, Query, status
+from sqlalchemy import func, select
+
+from app.api.deps import AdminUser, DbSession
 from app.models import User
-from app.schemas import ApiResponse, UserResponse, UserListResponse, RoleUpdateRequest, ActiveUpdateRequest
+from app.schemas import (
+    ActiveUpdateRequest,
+    AdminDashboardOrganizationCount,
+    AdminDashboardRoleCounts,
+    AdminDashboardSummaryResponse,
+    ApiResponse,
+    RoleUpdateRequest,
+    UserListResponse,
+    UserResponse,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/dashboard/summary", response_model=ApiResponse[AdminDashboardSummaryResponse])
+async def get_dashboard_summary(db: DbSession, current_user: AdminUser):
+    """관리자 대시보드 요약 지표 조회"""
+    total_users = await db.scalar(select(func.count(User.id))) or 0
+    active_users = await db.scalar(select(func.count(User.id)).where(User.is_active.is_(True))) or 0
+    inactive_users = await db.scalar(select(func.count(User.id)).where(User.is_active.is_(False))) or 0
+    pending_users = (
+        await db.scalar(
+            select(func.count(User.id)).where(User.role == "none", User.is_active.is_(True))
+        )
+        or 0
+    )
+
+    recent_cutoff = datetime.utcnow() - timedelta(days=7)
+    recent_signups_7d = await db.scalar(
+        select(func.count(User.id)).where(User.created_at >= recent_cutoff)
+    ) or 0
+
+    role_rows = (
+        await db.execute(select(User.role, func.count(User.id)).group_by(User.role))
+    ).all()
+    role_counts = {
+        "admin": 0,
+        "editor": 0,
+        "viewer": 0,
+        "pending": 0,
+    }
+    for role, count in role_rows:
+        if role == "none":
+            role_counts["pending"] = count
+        elif role in role_counts:
+            role_counts[role] = count
+
+    organization_rows = (
+        await db.execute(
+            select(User.organization, func.count(User.id).label("user_count"))
+            .group_by(User.organization)
+            .order_by(func.count(User.id).desc(), User.organization.asc())
+            .limit(5)
+        )
+    ).all()
+
+    recent_signups = (
+        await db.execute(select(User).order_by(User.created_at.desc()).limit(5))
+    ).scalars().all()
+
+    summary = AdminDashboardSummaryResponse(
+        total_users=total_users,
+        active_users=active_users,
+        inactive_users=inactive_users,
+        pending_users=pending_users,
+        recent_signups_7d=recent_signups_7d,
+        role_counts=AdminDashboardRoleCounts(**role_counts),
+        organization_counts=[
+            AdminDashboardOrganizationCount(organization=organization, user_count=user_count)
+            for organization, user_count in organization_rows
+        ],
+        recent_signups=[UserListResponse.model_validate(user) for user in recent_signups],
+    )
+    return ApiResponse(success=True, data=summary)
 
 
 @router.get("/users", response_model=ApiResponse[list[UserListResponse]])
@@ -31,7 +105,9 @@ async def list_users(
 async def list_pending_users(db: DbSession, current_user: AdminUser):
     """승인 대기 중인 사용자 목록"""
     result = await db.execute(
-        select(User).where(User.role == "none", User.is_active == True).order_by(User.created_at.desc())
+        select(User)
+        .where(User.role == "none", User.is_active.is_(True))
+        .order_by(User.created_at.desc())
     )
     users = result.scalars().all()
     return ApiResponse(

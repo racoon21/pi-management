@@ -11,7 +11,34 @@ export interface UserListItem {
   created_at: string;
 }
 
+export interface AdminDashboardRoleCounts {
+  admin: number;
+  editor: number;
+  viewer: number;
+  pending: number;
+}
+
+export interface AdminDashboardOrganizationCount {
+  organization: string;
+  user_count: number;
+}
+
+export interface AdminDashboardSummary {
+  total_users: number;
+  active_users: number;
+  inactive_users: number;
+  pending_users: number;
+  recent_signups_7d: number;
+  role_counts: AdminDashboardRoleCounts;
+  organization_counts: AdminDashboardOrganizationCount[];
+  recent_signups: UserListItem[];
+}
+
 export const adminApi = {
+  getDashboardSummary: async (): Promise<AdminDashboardSummary> => {
+    return apiClient.get<AdminDashboardSummary>('/admin/dashboard/summary');
+  },
+
   getUsers: async (params?: { role?: string; is_active?: boolean }): Promise<UserListItem[]> => {
     const query = new URLSearchParams();
     if (params?.role) query.set('role', params.role);

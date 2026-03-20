@@ -63,3 +63,26 @@ class RoleUpdateRequest(BaseModel):
 
 class ActiveUpdateRequest(BaseModel):
     is_active: bool
+
+
+class AdminDashboardRoleCounts(BaseModel):
+    admin: int
+    editor: int
+    viewer: int
+    pending: int
+
+
+class AdminDashboardOrganizationCount(BaseModel):
+    organization: str
+    user_count: int
+
+
+class AdminDashboardSummaryResponse(BaseModel):
+    total_users: int
+    active_users: int
+    inactive_users: int
+    pending_users: int
+    recent_signups_7d: int
+    role_counts: AdminDashboardRoleCounts
+    organization_counts: list[AdminDashboardOrganizationCount]
+    recent_signups: list[UserListResponse]

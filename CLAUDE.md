@@ -801,6 +801,7 @@ npm run build    # tsc -b && vite build → dist/
 - [x] 회원가입 + 승인 대기 흐름 (role="none" → admin 승인 → role 전환)
 - [x] 역할 기반 접근 제어 (RBAC: admin/editor/viewer/none)
 - [x] Admin 사용자 관리 (역할 변경, 활성 토글, 가입 승인/거절)
+- [x] Admin 대시보드: 사용자 운영 지표 연동 (사용자 수, 역할 분포, 조직별 분포, 최근 가입 사용자)
 - [x] 대시보드 페이지 (KPI 통계, 레벨 분포, 퀵 액션, 최근 태스크)
 - [x] 인터랙티브 그래프 시각화 (하이브리드 레이아웃)
 - [x] 태스크 CRUD (생성, 수정, 삭제, 상세 조회) + 권한별 UI 제어
@@ -816,7 +817,6 @@ npm run build    # tsc -b && vite build → dist/
 ### 미구현 / 개선 필요
 
 - [ ] `/settings` 페이지: 설정 UI (현재 DashboardPage 별칭)
-- [ ] Admin 대시보드: 통계/차트 실제 데이터 연동 (현재 placeholder)
 - [ ] Admin 활동 로그: 사용자 활동 이력 (현재 placeholder)
 - [ ] Redis 기반 토큰 블랙리스트 (현재 인메모리)
 - [ ] 노드 드래그 앤 드롭 계층 이동
@@ -825,7 +825,7 @@ npm run build    # tsc -b && vite build → dist/
 - [ ] E2E 테스트 및 단위 테스트
 - [ ] CI/CD 파이프라인
 
-### Admin 브랜치 재계획 (main 기준)
+### Admin 브랜치 계획
 
 | 우선순위 | 브랜치명 | 핵심 목표 | 주요 작업 내용 | 포함 범위 |
 |------|---------|---------|--------------|----------|
@@ -835,11 +835,6 @@ npm run build    # tsc -b && vite build → dist/
 | 4 | `feature/admin-dashboard/chart-polish` | 대시보드 시각화 완성도 개선 | 카드 정렬, 차트, 최근 활동 위젯, loading/error/empty 상태 고도화 | AdminDashboard UI 전반 |
 | 5 | `feature/admin-users/audit-polish` | 사용자 관리와 감사 흐름 연결 강화 | 역할 변경/활성 토글/승인 처리 후 로그와 메시지 흐름 연결 | `AdminUsersPage`, `AdminRequestsPage`, 관련 admin API |
 
-**진행 원칙**
-- 이미 `main`에 반영된 `navigation-shell`, `admin users/requests`, `role dependency`는 다시 브랜치로 만들지 않는다.
-- 다음 admin 작업은 placeholder 상태인 대시보드와 로그 화면 중심으로 진행한다.
-- `user/pending` 계열 변경이 나중에 추가 반영되더라도, dashboard/logs 중심 작업은 대체로 독립적으로 진행 가능하다.
-- 단, pending 승인 화면(`PendingApprovalPage`, `AdminRequestsPage`, `/api/auth/me`, `/api/admin/users/pending`)을 직접 수정하는 브랜치는 충돌 가능성을 먼저 확인한다.
 ---
 
 ## 14. Codex 작업 가이드
@@ -906,7 +901,7 @@ npm run build    # tsc -b && vite build → dist/
 
 ### 2026-03-20 - `feature/admin-dashboard/live-data` (current)
 
-- AdminDashboard placeholder를 실제 운영 지표 화면으로 전환하는 브랜치
-- 사용자 수, pending 사용자 수, role 분포, 최근 가입/승인 요약을 우선 연동 대상으로 설정
-- DB schema 변경 없이 기존 `users`와 admin API 확장 범위 내에서 먼저 구현
-- `user/pending` 추가 merge 여부와 관계없이 독립적으로 진행 가능한 dashboard 중심 작업부터 착수
+- Backend `GET /api/admin/dashboard/summary` 추가: 전체/활성/비활성 사용자 수, 승인 대기 수, 최근 7일 가입 수, 역할 분포, 조직별 사용자 수, 최근 가입 사용자 목록 반환
+- Frontend `AdminDashboardPage` 실데이터 연동: 운영 요약 카드, 역할 분포, 조직별 사용자 수, 최근 가입 사용자 테이블, 새로고침/바로가기 액션 추가
+- `frontend/src/api/adminApi.ts`, `backend/app/schemas/user.py`, `backend/app/schemas/__init__.py` 확장으로 dashboard 응답 모델 연결
+- 검증 완료: `frontend npm run build` 성공, `admin/admin123` 로그인 후 `/api/admin/dashboard/summary` 200 응답 확인
