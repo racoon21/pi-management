@@ -825,6 +825,21 @@ npm run build    # tsc -b && vite build → dist/
 - [ ] E2E 테스트 및 단위 테스트
 - [ ] CI/CD 파이프라인
 
+### Admin 브랜치 재계획 (main 기준)
+
+| 우선순위 | 브랜치명 | 핵심 목표 | 주요 작업 내용 | 포함 범위 |
+|------|---------|---------|--------------|----------|
+| 1 | `feature/admin-dashboard/live-data` | Admin 대시보드 placeholder를 실제 운영 지표 화면으로 전환 | 사용자 수, pending 수, role 분포, 최근 가입/승인 요약 연동 | `frontend/src/admin/pages/AdminDashboardPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py` |
+| 2 | `feature/admin-logs/source-foundation` | 활동 로그의 데이터 원천과 API 구조 정의 | 어떤 이벤트를 로그로 볼지 결정, 응답 구조 정리, 필요 시 최소 저장 구조 설계 | `backend/app/api/admin.py`, 관련 schema/service 초안 |
+| 3 | `feature/admin-logs/history-ui` | AdminLogsPage를 실제 조회 화면으로 전환 | 로그 목록, 필터, 빈 상태/에러 상태, 최근 활동 표시 | `frontend/src/admin/pages/AdminLogsPage.tsx`, `frontend/src/api/adminApi.ts` |
+| 4 | `feature/admin-dashboard/chart-polish` | 대시보드 시각화 완성도 개선 | 카드 정렬, 차트, 최근 활동 위젯, loading/error/empty 상태 고도화 | AdminDashboard UI 전반 |
+| 5 | `feature/admin-users/audit-polish` | 사용자 관리와 감사 흐름 연결 강화 | 역할 변경/활성 토글/승인 처리 후 로그와 메시지 흐름 연결 | `AdminUsersPage`, `AdminRequestsPage`, 관련 admin API |
+
+**진행 원칙**
+- 이미 `main`에 반영된 `navigation-shell`, `admin users/requests`, `role dependency`는 다시 브랜치로 만들지 않는다.
+- 다음 admin 작업은 placeholder 상태인 대시보드와 로그 화면 중심으로 진행한다.
+- `user/pending` 계열 변경이 나중에 추가 반영되더라도, dashboard/logs 중심 작업은 대체로 독립적으로 진행 가능하다.
+- 단, pending 승인 화면(`PendingApprovalPage`, `AdminRequestsPage`, `/api/auth/me`, `/api/admin/users/pending`)을 직접 수정하는 브랜치는 충돌 가능성을 먼저 확인한다.
 ---
 
 ## 14. Codex 작업 가이드
@@ -887,3 +902,11 @@ npm run build    # tsc -b && vite build → dist/
 - `/auth/me`가 role="none" 사용자에게도 정상 응답하도록 수정
 - 로그인 실패 401이 Silent Refresh/리다이렉트 없이 에러 메시지 표시
 - 로그인 페이지 기본 계정 힌트(admin/admin123) 제거
+- 현재 main 코드 확인 기준, 위 pending 관련 핵심 동작(`role="none"` 처리 분리, `/auth/me` 허용, 로그인 401 처리)은 이미 반영된 상태로 보이며 admin dashboard/live-data 작업과 직접 충돌 가능성은 낮음
+
+### 2026-03-20 - `feature/admin-dashboard/live-data` (current)
+
+- AdminDashboard placeholder를 실제 운영 지표 화면으로 전환하는 브랜치
+- 사용자 수, pending 사용자 수, role 분포, 최근 가입/승인 요약을 우선 연동 대상으로 설정
+- DB schema 변경 없이 기존 `users`와 admin API 확장 범위 내에서 먼저 구현
+- `user/pending` 추가 merge 여부와 관계없이 독립적으로 진행 가능한 dashboard 중심 작업부터 착수
