@@ -95,6 +95,13 @@ class AdminActivitySourceCounts(BaseModel):
     user_signup: int
 
 
+class AdminActivityActionCounts(BaseModel):
+    task_create: int
+    task_update: int
+    task_delete: int
+    user_registered: int
+
+
 class AdminActivityLogItem(BaseModel):
     id: str
     source: Literal["task_history", "user_signup"]
@@ -115,4 +122,6 @@ class AdminActivityLogItem(BaseModel):
 
 class AdminActivityFeedResponse(BaseModel):
     source_counts: AdminActivitySourceCounts
+    action_counts: AdminActivityActionCounts
+    filtered_count: int
     activities: list[AdminActivityLogItem]

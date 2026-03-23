@@ -86,10 +86,18 @@ async def get_admin_logs_activities(
     db: DbSession,
     current_user: AdminUser,
     source: Literal["all", "task_history", "user_signup"] = Query("all"),
-    limit: int = Query(20, ge=1, le=100),
+    action: Literal["all", "TASK_CREATE", "TASK_UPDATE", "TASK_DELETE", "USER_REGISTERED"] = Query("all"),
+    query: str | None = Query(None, min_length=1, max_length=100),
+    limit: int = Query(100, ge=1, le=100),
 ):
     """관리자 활동 로그 원천 데이터 조회"""
-    activity_feed = await get_admin_activity_feed(db=db, source=source, limit=limit)
+    activity_feed = await get_admin_activity_feed(
+        db=db,
+        source=source,
+        action=action,
+        query=query,
+        limit=limit,
+    )
     return ApiResponse(success=True, data=activity_feed)
 
 
