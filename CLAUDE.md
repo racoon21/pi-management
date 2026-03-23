@@ -832,7 +832,6 @@ npm run build    # tsc -b && vite build → dist/
 | 우선순위 | 브랜치명 | 핵심 목표 | 주요 작업 내용 | 포함 범위 |
 |------|---------|---------|--------------|----------|
 | 1 | `feature/admin-dashboard/live-data` | Admin 대시보드 placeholder를 실제 운영 지표 화면으로 전환 | 사용자 수, pending 수, role 분포, 최근 가입/승인 요약 연동 | `frontend/src/admin/pages/AdminDashboardPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py` |
-- Frontend ?? ???? ???: ?? ?? ???? ?? ?? ??? ???? ??/??? ?? truncate ??? ???? ? ???? ??
 | 2 | `feature/admin-logs/source-foundation` | 활동 로그의 데이터 원천과 API 구조 정의 | `task_histories` + `users.created_at` 기반 통합 activity feed, `/api/admin/logs/activities`, 기본 원천 필터/피드 화면 연결 | `backend/app/api/admin.py`, `backend/app/services/admin_activity_service.py`, `backend/app/schemas/user.py`, `frontend/src/api/adminApi.ts`, `frontend/src/admin/pages/AdminLogsPage.tsx` |
 | 3 | `feature/admin-logs/history-ui` | AdminLogsPage를 실제 조회 화면으로 전환 | 검색, action 필터, source 기준 전체 이벤트 집계, 결과 테이블, 선택 상세 패널, 최근 100건 페이지네이션 | `frontend/src/admin/pages/AdminLogsPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py`, `backend/app/services/admin_activity_service.py`, `backend/app/schemas/user.py` |
 | 4 | `feature/admin-dashboard/chart-polish` | 대시보드 시각화 완성도 개선 | 카드 정렬, 차트, 최근 활동 위젯, loading/error/empty 상태 고도화 | AdminDashboard UI 전반 |
@@ -922,6 +921,7 @@ npm run build    # tsc -b && vite build → dist/
 
 - Frontend `AdminLogsPage` 고도화: 원천 필터에 더해 이벤트 타입 필터, 검색 입력, 결과 테이블, 선택 상세 패널, 최근 100건 페이지네이션 추가
 - Frontend 집계 표시 보정: 원천 필터에 따라 `전체 이벤트` 숫자가 해당 원천 총합으로 보이도록 조정, 목록 배지/조직 셀 줄바꿈 최소화
+- Frontend 목록 레이아웃 안정화: 활동 목록 테이블을 고정 컬럼 폭으로 전환하고 대상/수행자 셀을 truncate 처리해 페이지 간 너비 흔들림을 방지
 - Backend `/api/admin/logs/activities` 확장: `action`/`query`/`limit` 필터, `action_counts`와 `filtered_count` 응답 추가, 기본 조회 limit 100으로 상향
 - `frontend/src/api/adminApi.ts` 와 `backend/app/schemas/user.py` 확장으로 history UI 전용 타입 연결
 - 검증 완료: `frontend npm run build` 성공, `admin/admin123` 로그인 후 logs endpoint 200 응답 확인, `source=task_history` + `action=TASK_UPDATE` + `query=admin` 조합 응답 확인
