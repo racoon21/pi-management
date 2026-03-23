@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import type { User } from '../types/task';
 
 export interface UserListItem {
@@ -34,9 +34,48 @@ export interface AdminDashboardSummary {
   recent_signups: UserListItem[];
 }
 
+export type AdminActivitySource = 'all' | 'task_history' | 'user_signup';
+
+export interface AdminActivitySourceCounts {
+  total: number;
+  task_history: number;
+  user_signup: number;
+}
+
+export interface AdminActivityLogItem {
+  id: string;
+  source: 'task_history' | 'user_signup';
+  source_label: string;
+  action: 'TASK_CREATE' | 'TASK_UPDATE' | 'TASK_DELETE' | 'USER_REGISTERED';
+  action_label: string;
+  description: string;
+  actor_name: string | null;
+  actor_employee_id: string | null;
+  subject_type: 'task' | 'user';
+  subject_id: string;
+  subject_label: string;
+  subject_secondary: string | null;
+  organization: string | null;
+  occurred_at: string;
+  metadata: Record<string, string | number | boolean | null>;
+}
+
+export interface AdminActivityFeed {
+  source_counts: AdminActivitySourceCounts;
+  activities: AdminActivityLogItem[];
+}
+
 export const adminApi = {
   getDashboardSummary: async (): Promise<AdminDashboardSummary> => {
     return apiClient.get<AdminDashboardSummary>('/admin/dashboard/summary');
+  },
+
+  getActivityFeed: async (params?: { source?: AdminActivitySource; limit?: number }): Promise<AdminActivityFeed> => {
+    const query = new URLSearchParams();
+    if (params?.source && params.source !== 'all') query.set('source', params.source);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return apiClient.get<AdminActivityFeed>(`/admin/logs/activities${qs ? `?${qs}` : ''}`);
   },
 
   getUsers: async (params?: { role?: string; is_active?: boolean }): Promise<UserListItem[]> => {

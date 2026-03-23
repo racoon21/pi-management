@@ -1,4 +1,4 @@
-from .common import ApiResponse
+﻿from .common import ApiResponse
 from .user import (
     UserCreate,
     UserResponse,
@@ -12,6 +12,9 @@ from .user import (
     AdminDashboardRoleCounts,
     AdminDashboardOrganizationCount,
     AdminDashboardSummaryResponse,
+    AdminActivitySourceCounts,
+    AdminActivityLogItem,
+    AdminActivityFeedResponse,
 )
 from .task import TaskGraphItem, TaskDetail, TaskCreate, TaskUpdate, TaskHistoryResponse
 
@@ -29,6 +32,9 @@ __all__ = [
     "AdminDashboardRoleCounts",
     "AdminDashboardOrganizationCount",
     "AdminDashboardSummaryResponse",
+    "AdminActivitySourceCounts",
+    "AdminActivityLogItem",
+    "AdminActivityFeedResponse",
     "TaskGraphItem",
     "TaskDetail",
     "TaskCreate",
