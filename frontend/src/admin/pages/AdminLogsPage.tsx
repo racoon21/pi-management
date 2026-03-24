@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ElementType } from 'react';
-import { Activity, ClipboardList, Filter, RefreshCw, Search, UserPlus } from 'lucide-react';
+import { Activity, ClipboardList, Filter, RefreshCw, Search, ShieldCheck, UserPlus } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Header } from '../../components/layout/Header';
 import { Badge } from '../../components/shared/Badge';
@@ -17,6 +17,7 @@ const SOURCE_FILTERS: { key: AdminActivitySource; label: string }[] = [
   { key: 'all', label: '전체' },
   { key: 'task_history', label: '업무 변경' },
   { key: 'user_signup', label: '계정 등록' },
+  { key: 'admin_audit', label: '관리자 감사' },
 ];
 
 const ACTION_FILTERS: { key: AdminActivityAction; label: string }[] = [
@@ -25,11 +26,17 @@ const ACTION_FILTERS: { key: AdminActivityAction; label: string }[] = [
   { key: 'TASK_UPDATE', label: '업무 수정' },
   { key: 'TASK_DELETE', label: '업무 삭제' },
   { key: 'USER_REGISTERED', label: '계정 등록' },
+  { key: 'USER_APPROVED', label: '가입 승인' },
+  { key: 'USER_REJECTED', label: '가입 거절' },
+  { key: 'USER_ROLE_CHANGED', label: '역할 변경' },
+  { key: 'USER_ACTIVATED', label: '계정 활성' },
+  { key: 'USER_DEACTIVATED', label: '계정 비활성' },
 ];
 
 const SOURCE_BADGE_VARIANT = {
   task_history: 'primary' as const,
   user_signup: 'warning' as const,
+  admin_audit: 'default' as const,
 };
 
 const ACTION_BADGE_VARIANT = {
@@ -37,6 +44,11 @@ const ACTION_BADGE_VARIANT = {
   TASK_UPDATE: 'primary' as const,
   TASK_DELETE: 'danger' as const,
   USER_REGISTERED: 'warning' as const,
+  USER_APPROVED: 'success' as const,
+  USER_REJECTED: 'danger' as const,
+  USER_ROLE_CHANGED: 'primary' as const,
+  USER_ACTIVATED: 'success' as const,
+  USER_DEACTIVATED: 'warning' as const,
 };
 
 const PAGE_SIZE = 10;
@@ -60,6 +72,7 @@ const getSourceScopedTotal = (feed: AdminActivityFeed | null, source: AdminActiv
     all: feed.source_counts.total,
     task_history: feed.source_counts.task_history,
     user_signup: feed.source_counts.user_signup,
+    admin_audit: feed.source_counts.admin_audit,
   }[source];
 };
 
@@ -75,6 +88,11 @@ const getActionCount = (
     TASK_UPDATE: feed.action_counts.task_update,
     TASK_DELETE: feed.action_counts.task_delete,
     USER_REGISTERED: feed.action_counts.user_registered,
+    USER_APPROVED: feed.action_counts.user_approved,
+    USER_REJECTED: feed.action_counts.user_rejected,
+    USER_ROLE_CHANGED: feed.action_counts.user_role_changed,
+    USER_ACTIVATED: feed.action_counts.user_activated,
+    USER_DEACTIVATED: feed.action_counts.user_deactivated,
   }[action];
 };
 
@@ -241,11 +259,12 @@ export const AdminLogsPage = () => {
           </section>
         )}
 
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard icon={Activity} label="전체 활동 원천" value={formatCount(feed?.source_counts.total ?? 0)} tone="bg-[#5E3D8F]" />
           <StatCard icon={Filter} label="현재 조회 결과" value={formatCount(feed?.filtered_count ?? 0)} tone="bg-[#7952B3]" />
           <StatCard icon={ClipboardList} label="업무 변경 원천" value={formatCount(feed?.source_counts.task_history ?? 0)} tone="bg-[#4B6CB7]" />
           <StatCard icon={UserPlus} label="계정 등록 원천" value={formatCount(feed?.source_counts.user_signup ?? 0)} tone="bg-[#F5B700]" />
+          <StatCard icon={ShieldCheck} label="관리자 감사" value={formatCount(feed?.source_counts.admin_audit ?? 0)} tone="bg-[#2F4858]" />
         </section>
 
         <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5">
