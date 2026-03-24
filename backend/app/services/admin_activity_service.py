@@ -6,12 +6,14 @@ from sqlalchemy.orm import aliased
 
 from app.models import TaskHistory, User
 from app.schemas import (
+    AdminActivityActionCounts,
     AdminActivityFeedResponse,
     AdminActivityLogItem,
     AdminActivitySourceCounts,
 )
 
 ActivitySource = Literal["all", "task_history", "user_signup"]
+ActivityAction = Literal["all", "TASK_CREATE", "TASK_UPDATE", "TASK_DELETE", "USER_REGISTERED"]
 
 TASK_ACTIVITY_META = {
     "CREATE": ("TASK_CREATE", "업무 생성", "업무 변경"),
@@ -87,13 +89,38 @@ def _build_signup_activity(user: User) -> AdminActivityLogItem:
     )
 
 
+def _matches_query(item: AdminActivityLogItem, normalized_query: str) -> bool:
+    search_targets = [
+        item.description,
+        item.actor_name or "",
+        item.actor_employee_id or "",
+        item.subject_label,
+        item.subject_secondary or "",
+        item.organization or "",
+        str(item.metadata.get("level", "")),
+        str(item.metadata.get("role", "")),
+    ]
+    return any(normalized_query in target.lower() for target in search_targets)
+
+
+def _build_action_counts(activities: list[AdminActivityLogItem]) -> AdminActivityActionCounts:
+    return AdminActivityActionCounts(
+        task_create=sum(item.action == "TASK_CREATE" for item in activities),
+        task_update=sum(item.action == "TASK_UPDATE" for item in activities),
+        task_delete=sum(item.action == "TASK_DELETE" for item in activities),
+        user_registered=sum(item.action == "USER_REGISTERED" for item in activities),
+    )
+
+
 async def get_admin_activity_feed(
     db: AsyncSession,
     source: ActivitySource = "all",
-    limit: int = 20,
+    action: ActivityAction = "all",
+    query: str | None = None,
+    limit: int = 100,
 ) -> AdminActivityFeedResponse:
     safe_limit = max(1, min(limit, 100))
-    fetch_limit = safe_limit if source != "all" else max(safe_limit * 2, 20)
+    fetch_limit = max(safe_limit * 10, 200)
 
     task_history_count = await db.scalar(select(func.count(TaskHistory.id))) or 0
     user_signup_count = await db.scalar(select(func.count(User.id))) or 0
@@ -124,10 +151,18 @@ async def get_admin_activity_feed(
         recent_signups = (
             await db.execute(select(User).order_by(User.created_at.desc()).limit(fetch_limit))
         ).scalars().all()
-
         activities.extend(_build_signup_activity(user) for user in recent_signups)
 
     activities.sort(key=lambda item: item.occurred_at, reverse=True)
+
+    normalized_query = (query or "").strip().lower()
+    if normalized_query:
+        activities = [item for item in activities if _matches_query(item, normalized_query)]
+
+    action_counts = _build_action_counts(activities)
+
+    if action != "all":
+        activities = [item for item in activities if item.action == action]
 
     return AdminActivityFeedResponse(
         source_counts=AdminActivitySourceCounts(
@@ -135,5 +170,8 @@ async def get_admin_activity_feed(
             task_history=task_history_count,
             user_signup=user_signup_count,
         ),
+        action_counts=action_counts,
+        filtered_count=len(activities),
         activities=activities[:safe_limit],
     )
+

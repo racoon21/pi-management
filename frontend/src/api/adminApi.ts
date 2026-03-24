@@ -35,11 +35,19 @@ export interface AdminDashboardSummary {
 }
 
 export type AdminActivitySource = 'all' | 'task_history' | 'user_signup';
+export type AdminActivityAction = 'all' | 'TASK_CREATE' | 'TASK_UPDATE' | 'TASK_DELETE' | 'USER_REGISTERED';
 
 export interface AdminActivitySourceCounts {
   total: number;
   task_history: number;
   user_signup: number;
+}
+
+export interface AdminActivityActionCounts {
+  task_create: number;
+  task_update: number;
+  task_delete: number;
+  user_registered: number;
 }
 
 export interface AdminActivityLogItem {
@@ -62,6 +70,8 @@ export interface AdminActivityLogItem {
 
 export interface AdminActivityFeed {
   source_counts: AdminActivitySourceCounts;
+  action_counts: AdminActivityActionCounts;
+  filtered_count: number;
   activities: AdminActivityLogItem[];
 }
 
@@ -70,9 +80,16 @@ export const adminApi = {
     return apiClient.get<AdminDashboardSummary>('/admin/dashboard/summary');
   },
 
-  getActivityFeed: async (params?: { source?: AdminActivitySource; limit?: number }): Promise<AdminActivityFeed> => {
+  getActivityFeed: async (params?: {
+    source?: AdminActivitySource;
+    action?: AdminActivityAction;
+    query?: string;
+    limit?: number;
+  }): Promise<AdminActivityFeed> => {
     const query = new URLSearchParams();
     if (params?.source && params.source !== 'all') query.set('source', params.source);
+    if (params?.action && params.action !== 'all') query.set('action', params.action);
+    if (params?.query?.trim()) query.set('query', params.query.trim());
     if (params?.limit) query.set('limit', String(params.limit));
     const qs = query.toString();
     return apiClient.get<AdminActivityFeed>(`/admin/logs/activities${qs ? `?${qs}` : ''}`);

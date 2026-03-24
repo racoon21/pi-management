@@ -13,6 +13,7 @@ from .user import (
     AdminDashboardOrganizationCount,
     AdminDashboardSummaryResponse,
     AdminActivitySourceCounts,
+    AdminActivityActionCounts,
     AdminActivityLogItem,
     AdminActivityFeedResponse,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "AdminDashboardOrganizationCount",
     "AdminDashboardSummaryResponse",
     "AdminActivitySourceCounts",
+    "AdminActivityActionCounts",
     "AdminActivityLogItem",
     "AdminActivityFeedResponse",
     "TaskGraphItem",
