@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -8,6 +9,7 @@ from app.api.deps import AdminUser, DbSession
 from app.models import User
 from app.schemas import (
     ActiveUpdateRequest,
+    AdminActivityFeedResponse,
     AdminDashboardOrganizationCount,
     AdminDashboardRoleCounts,
     AdminDashboardSummaryResponse,
@@ -16,6 +18,7 @@ from app.schemas import (
     UserListResponse,
     UserResponse,
 )
+from app.services.admin_activity_service import get_admin_activity_feed
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -38,9 +41,7 @@ async def get_dashboard_summary(db: DbSession, current_user: AdminUser):
         select(func.count(User.id)).where(User.created_at >= recent_cutoff)
     ) or 0
 
-    role_rows = (
-        await db.execute(select(User.role, func.count(User.id)).group_by(User.role))
-    ).all()
+    role_rows = (await db.execute(select(User.role, func.count(User.id)).group_by(User.role))).all()
     role_counts = {
         "admin": 0,
         "editor": 0,
@@ -62,9 +63,7 @@ async def get_dashboard_summary(db: DbSession, current_user: AdminUser):
         )
     ).all()
 
-    recent_signups = (
-        await db.execute(select(User).order_by(User.created_at.desc()).limit(5))
-    ).scalars().all()
+    recent_signups = (await db.execute(select(User).order_by(User.created_at.desc()).limit(5))).scalars().all()
 
     summary = AdminDashboardSummaryResponse(
         total_users=total_users,
@@ -80,6 +79,18 @@ async def get_dashboard_summary(db: DbSession, current_user: AdminUser):
         recent_signups=[UserListResponse.model_validate(user) for user in recent_signups],
     )
     return ApiResponse(success=True, data=summary)
+
+
+@router.get("/logs/activities", response_model=ApiResponse[AdminActivityFeedResponse])
+async def get_admin_logs_activities(
+    db: DbSession,
+    current_user: AdminUser,
+    source: Literal["all", "task_history", "user_signup"] = Query("all"),
+    limit: int = Query(20, ge=1, le=100),
+):
+    """관리자 활동 로그 원천 데이터 조회"""
+    activity_feed = await get_admin_activity_feed(db=db, source=source, limit=limit)
+    return ApiResponse(success=True, data=activity_feed)
 
 
 @router.get("/users", response_model=ApiResponse[list[UserListResponse]])

@@ -1,4 +1,4 @@
-# PI 내역 자산화 및 Tracking 관리 시스템 PRD (v5)
+﻿# PI 내역 자산화 및 Tracking 관리 시스템 PRD (v5)
 
 > **이 문서는 AI 코딩 어시스턴트(Codex, Claude, Cursor 등)와 함께 개발하기 위해 최적화된 명세서입니다.**
 > 코드 수정 시 이 문서를 먼저 읽고 전체 구조를 파악한 뒤 작업해 주세요.
@@ -814,10 +814,12 @@ npm run build    # tsc -b && vite build → dist/
 - [x] PgBouncer 호환 DB 연결
 - [x] Docker Compose 개발 환경 (DB + Backend + Frontend)
 
+- [x] Admin 활동 로그 원천 연결 (task history + 계정 등록 통합 activity feed, 기본 조회 화면)
+
 ### 미구현 / 개선 필요
 
 - [ ] `/settings` 페이지: 설정 UI (현재 DashboardPage 별칭)
-- [ ] Admin 활동 로그: 사용자 활동 이력 (현재 placeholder)
+- [ ] Admin 활동 로그 고도화: 상세 필터, 관리자 감사 로그 저장, 이력 화면 완성
 - [ ] Redis 기반 토큰 블랙리스트 (현재 인메모리)
 - [ ] 노드 드래그 앤 드롭 계층 이동
 - [ ] 키워드/담당자 통합 검색
@@ -830,7 +832,7 @@ npm run build    # tsc -b && vite build → dist/
 | 우선순위 | 브랜치명 | 핵심 목표 | 주요 작업 내용 | 포함 범위 |
 |------|---------|---------|--------------|----------|
 | 1 | `feature/admin-dashboard/live-data` | Admin 대시보드 placeholder를 실제 운영 지표 화면으로 전환 | 사용자 수, pending 수, role 분포, 최근 가입/승인 요약 연동 | `frontend/src/admin/pages/AdminDashboardPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py` |
-| 2 | `feature/admin-logs/source-foundation` | 활동 로그의 데이터 원천과 API 구조 정의 | 어떤 이벤트를 로그로 볼지 결정, 응답 구조 정리, 필요 시 최소 저장 구조 설계 | `backend/app/api/admin.py`, 관련 schema/service 초안 |
+| 2 | `feature/admin-logs/source-foundation` | 활동 로그의 데이터 원천과 API 구조 정의 | `task_histories` + `users.created_at` 기반 통합 activity feed, `/api/admin/logs/activities`, 기본 원천 필터/피드 화면 연결 | `backend/app/api/admin.py`, `backend/app/services/admin_activity_service.py`, `backend/app/schemas/user.py`, `frontend/src/api/adminApi.ts`, `frontend/src/admin/pages/AdminLogsPage.tsx` |
 | 3 | `feature/admin-logs/history-ui` | AdminLogsPage를 실제 조회 화면으로 전환 | 로그 목록, 필터, 빈 상태/에러 상태, 최근 활동 표시 | `frontend/src/admin/pages/AdminLogsPage.tsx`, `frontend/src/api/adminApi.ts` |
 | 4 | `feature/admin-dashboard/chart-polish` | 대시보드 시각화 완성도 개선 | 카드 정렬, 차트, 최근 활동 위젯, loading/error/empty 상태 고도화 | AdminDashboard UI 전반 |
 | 5 | `feature/admin-users/audit-polish` | 사용자 관리와 감사 흐름 연결 강화 | 역할 변경/활성 토글/승인 처리 후 로그와 메시지 흐름 연결 | `AdminUsersPage`, `AdminRequestsPage`, 관련 admin API |
@@ -899,9 +901,18 @@ npm run build    # tsc -b && vite build → dist/
 - 로그인 페이지 기본 계정 힌트(admin/admin123) 제거
 - 현재 main 코드 확인 기준, 위 pending 관련 핵심 동작(`role="none"` 처리 분리, `/auth/me` 허용, 로그인 401 처리)은 이미 반영된 상태로 보이며 admin dashboard/live-data 작업과 직접 충돌 가능성은 낮음
 
-### 2026-03-20 - `feature/admin-dashboard/live-data` (current)
+### 2026-03-20 - `feature/admin-dashboard/live-data` (PR open)
 
 - Backend `GET /api/admin/dashboard/summary` 추가: 전체/활성/비활성 사용자 수, 승인 대기 수, 최근 7일 가입 수, 역할 분포, 조직별 사용자 수, 최근 가입 사용자 목록 반환
 - Frontend `AdminDashboardPage` 실데이터 연동: 운영 요약 카드, 역할 분포, 조직별 사용자 수, 최근 가입 사용자 테이블, 새로고침/바로가기 액션 추가
 - `frontend/src/api/adminApi.ts`, `backend/app/schemas/user.py`, `backend/app/schemas/__init__.py` 확장으로 dashboard 응답 모델 연결
-- 검증 완료: `frontend npm run build` 성공, `admin/admin123` 로그인 후 `/api/admin/dashboard/summary` 200 응답 확인
+- 검증 완료: frontend npm run build 성공, admin/admin123 로그인 후 /api/admin/dashboard/summary 200 응답 확인
+
+### 2026-03-23 - `feature/admin-logs/source-foundation` (current)
+
+- Backend `GET /api/admin/logs/activities` 추가: `task_histories`와 `users.created_at`를 통합한 activity feed 원천 데이터 제공, `source`/`limit` 필터 지원
+- Backend `admin_activity_service` 추가: 업무 변경(CREATE/UPDATE/DELETE)과 계정 등록 이벤트를 공통 응답 구조로 정리, source별 건수 집계 제공
+- Frontend `adminApi.getActivityFeed()` 추가 및 `AdminLogsPage` 실데이터 연동: 원천별 건수 카드, 원천 필터, 최근 활동 피드, 새로고침/에러/빈 상태 기본 처리
+- 검증 완료: `frontend npm run build` 성공, `admin/admin123` 로그인 후 `/api/admin/logs/activities` 200 응답 확인, `viewer/viewer123` 계정으로 동일 endpoint 403 차단 확인
+
+
