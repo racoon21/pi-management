@@ -801,6 +801,7 @@ npm run build    # tsc -b && vite build → dist/
 - [x] 회원가입 + 승인 대기 흐름 (role="none" → admin 승인 → role 전환)
 - [x] 역할 기반 접근 제어 (RBAC: admin/editor/viewer/none)
 - [x] Admin 사용자 관리 (역할 변경, 활성 토글, 가입 승인/거절)
+- [x] Admin 대시보드: 사용자 운영 지표 연동 (사용자 수, 역할 분포, 조직별 분포, 최근 가입 사용자)
 - [x] 대시보드 페이지 (KPI 통계, 레벨 분포, 퀵 액션, 최근 태스크)
 - [x] 인터랙티브 그래프 시각화 (하이브리드 레이아웃)
 - [x] 태스크 CRUD (생성, 수정, 삭제, 상세 조회) + 권한별 UI 제어
@@ -816,7 +817,6 @@ npm run build    # tsc -b && vite build → dist/
 ### 미구현 / 개선 필요
 
 - [ ] `/settings` 페이지: 설정 UI (현재 DashboardPage 별칭)
-- [ ] Admin 대시보드: 통계/차트 실제 데이터 연동 (현재 placeholder)
 - [ ] Admin 활동 로그: 사용자 활동 이력 (현재 placeholder)
 - [ ] Redis 기반 토큰 블랙리스트 (현재 인메모리)
 - [ ] 노드 드래그 앤 드롭 계층 이동
@@ -824,6 +824,16 @@ npm run build    # tsc -b && vite build → dist/
 - [ ] 대량 데이터(3,000+ 노드) 성능 최적화 테스트
 - [ ] E2E 테스트 및 단위 테스트
 - [ ] CI/CD 파이프라인
+
+### Admin 브랜치 계획
+
+| 우선순위 | 브랜치명 | 핵심 목표 | 주요 작업 내용 | 포함 범위 |
+|------|---------|---------|--------------|----------|
+| 1 | `feature/admin-dashboard/live-data` | Admin 대시보드 placeholder를 실제 운영 지표 화면으로 전환 | 사용자 수, pending 수, role 분포, 최근 가입/승인 요약 연동 | `frontend/src/admin/pages/AdminDashboardPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py` |
+| 2 | `feature/admin-logs/source-foundation` | 활동 로그의 데이터 원천과 API 구조 정의 | 어떤 이벤트를 로그로 볼지 결정, 응답 구조 정리, 필요 시 최소 저장 구조 설계 | `backend/app/api/admin.py`, 관련 schema/service 초안 |
+| 3 | `feature/admin-logs/history-ui` | AdminLogsPage를 실제 조회 화면으로 전환 | 로그 목록, 필터, 빈 상태/에러 상태, 최근 활동 표시 | `frontend/src/admin/pages/AdminLogsPage.tsx`, `frontend/src/api/adminApi.ts` |
+| 4 | `feature/admin-dashboard/chart-polish` | 대시보드 시각화 완성도 개선 | 카드 정렬, 차트, 최근 활동 위젯, loading/error/empty 상태 고도화 | AdminDashboard UI 전반 |
+| 5 | `feature/admin-users/audit-polish` | 사용자 관리와 감사 흐름 연결 강화 | 역할 변경/활성 토글/승인 처리 후 로그와 메시지 흐름 연결 | `AdminUsersPage`, `AdminRequestsPage`, 관련 admin API |
 
 ---
 
@@ -887,3 +897,11 @@ npm run build    # tsc -b && vite build → dist/
 - `/auth/me`가 role="none" 사용자에게도 정상 응답하도록 수정
 - 로그인 실패 401이 Silent Refresh/리다이렉트 없이 에러 메시지 표시
 - 로그인 페이지 기본 계정 힌트(admin/admin123) 제거
+- 현재 main 코드 확인 기준, 위 pending 관련 핵심 동작(`role="none"` 처리 분리, `/auth/me` 허용, 로그인 401 처리)은 이미 반영된 상태로 보이며 admin dashboard/live-data 작업과 직접 충돌 가능성은 낮음
+
+### 2026-03-20 - `feature/admin-dashboard/live-data` (current)
+
+- Backend `GET /api/admin/dashboard/summary` 추가: 전체/활성/비활성 사용자 수, 승인 대기 수, 최근 7일 가입 수, 역할 분포, 조직별 사용자 수, 최근 가입 사용자 목록 반환
+- Frontend `AdminDashboardPage` 실데이터 연동: 운영 요약 카드, 역할 분포, 조직별 사용자 수, 최근 가입 사용자 테이블, 새로고침/바로가기 액션 추가
+- `frontend/src/api/adminApi.ts`, `backend/app/schemas/user.py`, `backend/app/schemas/__init__.py` 확장으로 dashboard 응답 모델 연결
+- 검증 완료: `frontend npm run build` 성공, `admin/admin123` 로그인 후 `/api/admin/dashboard/summary` 200 응답 확인
