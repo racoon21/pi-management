@@ -1,8 +1,9 @@
-// 프록시를 통해 /api로 요청하면 백엔드로 전달됨
+// ???? ?? /api? ???? ???? ?????.
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export class ApiError extends Error {
   status: number;
+
   constructor(status: number, message: string) {
     super(message);
     this.status = status;
@@ -14,9 +15,16 @@ interface ApiResponse<T> {
   success: boolean;
   data: T;
   message?: string;
+  error_code?: string;
 }
 
-// Silent Refresh: 동시 401 요청 시 중복 refresh 방지
+export interface ApiResult<T> {
+  data: T;
+  message?: string;
+  errorCode?: string;
+}
+
+// Silent Refresh: ?? 401 ?? ? ?? refresh ??
 let refreshPromise: Promise<boolean> | null = null;
 
 function getAuthState() {
@@ -32,11 +40,19 @@ function getAuthState() {
 function setAuthTokens(accessToken: string, refreshToken: string) {
   const raw = localStorage.getItem('auth-storage');
   if (!raw) return;
+
   try {
     const parsed = JSON.parse(raw);
-    parsed.state = { ...parsed.state, accessToken, refreshToken, isAuthenticated: true };
+    parsed.state = {
+      ...parsed.state,
+      accessToken,
+      refreshToken,
+      isAuthenticated: true,
+    };
     localStorage.setItem('auth-storage', JSON.stringify(parsed));
-  } catch { /* ignore */ }
+  } catch {
+    // ignore
+  }
 }
 
 function clearAuth() {
@@ -77,12 +93,14 @@ class ApiClient {
   private getAuthHeaders(): HeadersInit {
     const state = getAuthState();
     const token = state?.accessToken;
+
     if (token) {
       return {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       };
     }
+
     return { 'Content-Type': 'application/json' };
   }
 
@@ -91,25 +109,33 @@ class ApiClient {
     window.location.href = '/login';
   }
 
-  private async request<T>(endpoint: string, options: RequestInit, isRetry = false): Promise<T> {
+  private async requestResponse<T>(
+    endpoint: string,
+    options: RequestInit,
+    isRetry = false,
+  ): Promise<ApiResponse<T>> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
-      headers: this.getAuthHeaders(),
+      headers: {
+        ...this.getAuthHeaders(),
+        ...(options.headers ?? {}),
+      },
     });
 
-    const isAuthEndpoint = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register');
+    const isAuthEndpoint =
+      endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register');
 
     if (response.status === 401 && !isAuthEndpoint) {
       if (!isRetry) {
-        // Silent Refresh 시도 (동시 요청 큐잉)
         if (!refreshPromise) {
-          refreshPromise = silentRefresh().finally(() => { refreshPromise = null; });
+          refreshPromise = silentRefresh().finally(() => {
+            refreshPromise = null;
+          });
         }
-        const refreshed = await refreshPromise;
 
+        const refreshed = await refreshPromise;
         if (refreshed) {
-          // 새 토큰으로 원래 요청 재시도
-          return this.request<T>(endpoint, options, true);
+          return this.requestResponse<T>(endpoint, options, true);
         }
       }
 
@@ -119,19 +145,47 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Network error' }));
-      throw new ApiError(response.status, error.detail || `HTTP ${response.status}`);
+      throw new ApiError(response.status, error.detail || error.message || `HTTP ${response.status}`);
     }
 
-    const result: ApiResponse<T> = await response.json();
+    return response.json();
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit, isRetry = false): Promise<T> {
+    const result = await this.requestResponse<T>(endpoint, options, isRetry);
     return result.data;
+  }
+
+  private async requestWithMeta<T>(
+    endpoint: string,
+    options: RequestInit,
+    isRetry = false,
+  ): Promise<ApiResult<T>> {
+    const result = await this.requestResponse<T>(endpoint, options, isRetry);
+    return {
+      data: result.data,
+      message: result.message,
+      errorCode: result.error_code,
+    };
   }
 
   async get<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
+  async getWithMeta<T>(endpoint: string): Promise<ApiResult<T>> {
+    return this.requestWithMeta<T>(endpoint, { method: 'GET' });
+  }
+
   async post<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async postWithMeta<T>(endpoint: string, data?: unknown): Promise<ApiResult<T>> {
+    return this.requestWithMeta<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -144,8 +198,19 @@ class ApiClient {
     });
   }
 
+  async putWithMeta<T>(endpoint: string, data: unknown): Promise<ApiResult<T>> {
+    return this.requestWithMeta<T>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
+  }
+
+  async deleteWithMeta<T>(endpoint: string): Promise<ApiResult<T>> {
+    return this.requestWithMeta<T>(endpoint, { method: 'DELETE' });
   }
 }
 
