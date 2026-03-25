@@ -1,5 +1,6 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState, type ElementType } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ElementType } from 'react';
 import { Activity, ClipboardList, Filter, RefreshCw, Search, UserPlus } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { Header } from '../../components/layout/Header';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
@@ -78,6 +79,9 @@ const getActionCount = (
 };
 
 export const AdminLogsPage = () => {
+  const location = useLocation();
+  const navigationState = location.state as { selectedActivityId?: string } | null;
+  const pendingSelectedIdRef = useRef<string | null>(navigationState?.selectedActivityId ?? null);
   const [source, setSource] = useState<AdminActivitySource>('all');
   const [action, setAction] = useState<AdminActivityAction>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,6 +118,10 @@ export const AdminLogsPage = () => {
     setCurrentPage(1);
   }, [source, action, deferredSearch]);
 
+  useEffect(() => {
+    pendingSelectedIdRef.current = navigationState?.selectedActivityId ?? null;
+  }, [navigationState?.selectedActivityId]);
+
   const totalFetchedActivities = feed?.activities.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalFetchedActivities / PAGE_SIZE));
 
@@ -128,6 +136,33 @@ export const AdminLogsPage = () => {
   }, [currentPage, feed]);
 
   useEffect(() => {
+    if (!feed?.activities.length || !pendingSelectedIdRef.current) return;
+
+    const targetId = pendingSelectedIdRef.current;
+    const targetIndex = feed.activities.findIndex((item) => item.id === targetId);
+
+    if (targetIndex === -1) {
+      pendingSelectedIdRef.current = null;
+      return;
+    }
+
+    const targetPage = Math.floor(targetIndex / PAGE_SIZE) + 1;
+    if (currentPage !== targetPage) {
+      setCurrentPage(targetPage);
+      return;
+    }
+
+    if (selectedId !== targetId) {
+      setSelectedId(targetId);
+      return;
+    }
+
+    pendingSelectedIdRef.current = null;
+  }, [currentPage, feed, selectedId]);
+
+  useEffect(() => {
+    if (pendingSelectedIdRef.current) return;
+
     if (!paginatedActivities.length) {
       setSelectedId(null);
       return;

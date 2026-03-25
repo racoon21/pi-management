@@ -815,6 +815,7 @@ npm run build    # tsc -b && vite build → dist/
 - [x] Docker Compose 개발 환경 (DB + Backend + Frontend)
 
 - [x] Admin 활동 로그 원천 연결 (task history + 계정 등록 통합 activity feed, 기본 조회 화면)
+- [x] Admin 대시보드 UI 고도화 (운영형 히어로, 파스텔 역할 분포, 운영 인사이트, 최근 활동 위젯, 활동 로그 상세 연계)
 
 ### 미구현 / 개선 필요
 
@@ -834,7 +835,7 @@ npm run build    # tsc -b && vite build → dist/
 | 1 | `feature/admin-dashboard/live-data` | Admin 대시보드 placeholder를 실제 운영 지표 화면으로 전환 | 사용자 수, pending 수, role 분포, 최근 가입/승인 요약 연동 | `frontend/src/admin/pages/AdminDashboardPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py` |
 | 2 | `feature/admin-logs/source-foundation` | 활동 로그의 데이터 원천과 API 구조 정의 | `task_histories` + `users.created_at` 기반 통합 activity feed, `/api/admin/logs/activities`, 기본 원천 필터/피드 화면 연결 | `backend/app/api/admin.py`, `backend/app/services/admin_activity_service.py`, `backend/app/schemas/user.py`, `frontend/src/api/adminApi.ts`, `frontend/src/admin/pages/AdminLogsPage.tsx` |
 | 3 | `feature/admin-logs/history-ui` | AdminLogsPage를 실제 조회 화면으로 전환 | 검색, action 필터, source 기준 전체 이벤트 집계, 결과 테이블, 선택 상세 패널, 최근 100건 페이지네이션 | `frontend/src/admin/pages/AdminLogsPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py`, `backend/app/services/admin_activity_service.py`, `backend/app/schemas/user.py` |
-| 4 | `feature/admin-dashboard/chart-polish` | 대시보드 시각화 완성도 개선 | 카드 정렬, 차트, 최근 활동 위젯, loading/error/empty 상태 고도화 | AdminDashboard UI 전반 |
+| 4 | `feature/admin-dashboard/chart-polish` | Admin 대시보드 운영형 UI 고도화 | 운영형 히어로, 파스텔 역할 분포 도넛, 운영 인사이트, 최근 활동 위젯, 활동 로그 상세 연계 | `frontend/src/admin/pages/AdminDashboardPage.tsx`, `frontend/src/admin/pages/AdminLogsPage.tsx` |
 | 5 | `feature/admin-users/audit-polish` | 사용자 관리와 감사 흐름 연결 강화 | 역할 변경/활성 토글/승인 처리 후 로그와 메시지 흐름 연결 | `AdminUsersPage`, `AdminRequestsPage`, 관련 admin API |
 
 ---
@@ -917,7 +918,7 @@ npm run build    # tsc -b && vite build → dist/
 
 
 
-### 2026-03-23 - `feature/admin-logs/history-ui` (current)
+### 2026-03-23 - `feature/admin-logs/history-ui` (PR open)
 
 - Frontend `AdminLogsPage` 고도화: 원천 필터에 더해 이벤트 타입 필터, 검색 입력, 결과 테이블, 선택 상세 패널, 최근 100건 페이지네이션 추가
 - Frontend 집계 표시 보정: 원천 필터에 따라 `전체 이벤트` 숫자가 해당 원천 총합으로 보이도록 조정, 목록 배지/조직 셀 줄바꿈 최소화
@@ -926,3 +927,10 @@ npm run build    # tsc -b && vite build → dist/
 - `frontend/src/api/adminApi.ts` 와 `backend/app/schemas/user.py` 확장으로 history UI 전용 타입 연결
 - 검증 완료: `frontend npm run build` 성공, `admin/admin123` 로그인 후 logs endpoint 200 응답 확인, `source=task_history` + `action=TASK_UPDATE` + `query=admin` 조합 응답 확인
 
+### 2026-03-24 - `feature/admin-dashboard/chart-polish` (current)
+
+- Frontend `AdminDashboardPage` 고도화: 운영형 히어로 섹션, KPI 카드 레이아웃, 파스텔 역할 분포 도넛, 운영 인사이트 카드, 최근 활동 위젯 추가
+- Frontend 최근 활동 UX 개선: 대시보드 항목 클릭 시 `/admin/logs`로 이동하면서 해당 로그를 자동 선택하도록 연계
+- Frontend polish 보정: 역할 분포 라벨 한국어 복구, 인사이트의 오해 소지가 있던 대각선 화살표 제거
+- `AdminLogsPage` 연계 보완: location state 기반 선택 로그/페이지 동기화로 활동 로그 상세 진입 흐름 개선
+- 검증 완료: `frontend npm run build` 성공, 관리자 홈 화면 수동 확인으로 역할 분포 라벨/색상 및 최근 활동 상세 연계 동작 확인
