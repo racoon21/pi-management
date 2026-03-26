@@ -20,13 +20,13 @@ export const Button = ({
   disabled,
   ...props
 }: ButtonProps) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none';
 
   const variantStyles = {
-    primary: 'bg-[#7952B3] text-white hover:bg-[#5E3D8F] focus:ring-[#7952B3]',
-    secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-300',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    ghost: 'text-gray-600 hover:bg-gray-100 focus:ring-gray-300',
+    primary: 'bg-[#7952B3] text-white hover:bg-[#5E3D8F]',
+    secondary: 'bg-card text-gray-300 border border-border hover:bg-[#252530]',
+    danger: 'bg-red-600 text-white hover:bg-red-700',
+    ghost: 'text-gray-400 hover:bg-[#1E1E2A] hover:text-white',
   };
 
   const sizeStyles = {

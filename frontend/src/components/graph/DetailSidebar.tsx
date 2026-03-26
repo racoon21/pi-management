@@ -130,25 +130,25 @@ export const DetailSidebar = () => {
   // [IMP-07] 삭제 확인 뷰
   if (showDeleteConfirm) {
     return (
-      <div className="w-96 h-full bg-white border-l border-gray-200 flex flex-col shadow-lg">
-        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="font-semibold text-red-600">업무 삭제 확인</h3>
-          <button onClick={() => setShowDeleteConfirm(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
+      <div className="w-96 h-full bg-card border-l border-border flex flex-col">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="font-semibold text-red-400">업무 삭제 확인</h3>
+          <button onClick={() => setShowDeleteConfirm(false)} className="p-1 text-gray-400 hover:text-gray-300 rounded">
             <X size={18} />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          <p className="text-sm text-gray-700 mb-3">
+          <p className="text-sm text-gray-300 mb-3">
             <strong>"{selectedTask.name}"</strong> 업무를 삭제하시겠습니까?
           </p>
           {descendants.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-              <p className="text-sm font-medium text-red-700 mb-2">
+            <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 mb-3">
+              <p className="text-sm font-medium text-red-400 mb-2">
                 하위 {descendants.length}개 업무가 함께 삭제됩니다:
               </p>
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {descendants.map((d) => (
-                  <div key={d.id} className="flex items-center gap-1.5 text-xs text-red-600">
+                  <div key={d.id} className="flex items-center gap-1.5 text-xs text-red-400">
                     <ChevronRight size={10} />
                     <Badge variant="danger" size="sm">{d.level}</Badge>
                     <span className="truncate">{d.name}</span>
@@ -159,7 +159,7 @@ export const DetailSidebar = () => {
           )}
           <p className="text-xs text-gray-500">이 작업은 되돌릴 수 없습니다.</p>
         </div>
-        <div className="p-4 border-t border-gray-200 flex gap-2">
+        <div className="p-4 border-t border-border flex gap-2">
           <Button variant="secondary" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>취소</Button>
           <Button variant="danger" className="flex-1" icon={Trash2} onClick={handleDeleteConfirm}>삭제</Button>
         </div>
@@ -168,30 +168,30 @@ export const DetailSidebar = () => {
   }
 
   return (
-    <div className="w-96 h-full bg-white border-l border-gray-200 flex flex-col shadow-lg">
+    <div className="w-96 h-full bg-card border-l border-border flex flex-col">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200">
+      <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
           <span className={`px-2 py-0.5 text-xs font-medium rounded ${style.text}`} style={style.style}>
             {selectedTask.level}
           </span>
-          <button onClick={() => selectTask(null)} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+          <button onClick={() => selectTask(null)} className="p-1 text-gray-400 hover:text-gray-300 hover:bg-[#2A2A35] rounded">
             <X size={18} />
           </button>
         </div>
-        <h3 className="font-semibold text-gray-900 leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all' }} title={selectedTask.name}>
+        <h3 className="font-semibold text-white leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all' }} title={selectedTask.name}>
           {selectedTask.name}
         </h3>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-border">
         <button onClick={() => setActiveTab('detail')}
-          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${activeTab === 'detail' ? 'text-[#7952B3] border-b-2 border-[#7952B3]' : 'text-gray-500 hover:text-gray-700'}`}>
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${activeTab === 'detail' ? 'text-[#7952B3] border-b-2 border-[#7952B3]' : 'text-gray-500 hover:text-gray-300'}`}>
           상세 정보
         </button>
         <button onClick={() => setActiveTab('history')}
-          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${activeTab === 'history' ? 'text-[#7952B3] border-b-2 border-[#7952B3]' : 'text-gray-500 hover:text-gray-700'}`}>
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${activeTab === 'history' ? 'text-[#7952B3] border-b-2 border-[#7952B3]' : 'text-gray-500 hover:text-gray-300'}`}>
           변경 이력
         </button>
       </div>
@@ -210,7 +210,7 @@ export const DetailSidebar = () => {
                 <label className="text-xs font-medium text-gray-500">조직 단위</label>
                 <select value={formData.organization_type}
                   onChange={(e) => setFormData({ ...formData, organization_type: e.target.value })}
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7952B3]">
+                  className="px-3 py-2 bg-[#1E1E2A] border border-border text-gray-300 rounded-lg text-sm focus:outline-none focus:ring-0 focus:border-white focus:border-2">
                   <option value="">선택 없음</option>
                   {ORG_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -239,8 +239,8 @@ export const DetailSidebar = () => {
                 <div className="flex items-center gap-2">
                   <input type="checkbox" id="ai_edit" checked={formData.is_ai_utilized}
                     onChange={(e) => setFormData({ ...formData, is_ai_utilized: e.target.checked })}
-                    className="w-4 h-4 text-[#7952B3] border-gray-300 rounded focus:ring-[#7952B3]" />
-                  <label htmlFor="ai_edit" className="text-sm text-gray-700">AI 활용 업무</label>
+                    className="w-4 h-4 text-[#7952B3] border-border rounded focus:ring-[#7952B3]" />
+                  <label htmlFor="ai_edit" className="text-sm text-gray-300">AI 활용 업무</label>
                 </div>
               )}
 
@@ -253,11 +253,11 @@ export const DetailSidebar = () => {
             /* 읽기 전용 뷰 */
             <div className="space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                   <Building size={18} className="text-gray-400" />
                   <div>
                     <p className="text-xs text-gray-500">조직</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-white">
                       {selectedTask.organization}
                       {selectedTask.organization_type && ` (${selectedTask.organization_type})`}
                     </p>
@@ -265,11 +265,11 @@ export const DetailSidebar = () => {
                 </div>
 
                 {selectedTask.manager_name && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                     <User size={18} className="text-gray-400" />
                     <div>
                       <p className="text-xs text-gray-500">담당자</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-white">
                         {selectedTask.manager_name}{selectedTask.manager_id && ` (${selectedTask.manager_id})`}
                       </p>
                     </div>
@@ -278,11 +278,11 @@ export const DetailSidebar = () => {
 
                 {/* [IMP-06] L4만 AI 활용 표시 */}
                 {isL4 && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                     <Sparkles size={18} className={selectedTask.is_ai_utilized ? 'text-purple-500' : 'text-gray-400'} />
                     <div>
                       <p className="text-xs text-gray-500">AI 활용</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-white">
                         {selectedTask.is_ai_utilized ? '활용 중' : '미활용'}
                       </p>
                     </div>
@@ -290,7 +290,7 @@ export const DetailSidebar = () => {
                 )}
 
                 {selectedTask.keywords && selectedTask.keywords.length > 0 && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="p-3 bg-[#1E1E2A] rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Tag size={18} className="text-gray-400" />
                       <p className="text-xs text-gray-500">키워드</p>
@@ -303,11 +303,11 @@ export const DetailSidebar = () => {
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                   <Calendar size={18} className="text-gray-400" />
                   <div>
                     <p className="text-xs text-gray-500">최근 수정</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-white">
                       {new Date(selectedTask.updated_at).toLocaleDateString('ko-KR')}
                     </p>
                   </div>
@@ -321,12 +321,12 @@ export const DetailSidebar = () => {
               <p className="text-sm text-gray-500 text-center py-8">로딩 중...</p>
             ) : history.length > 0 ? (
               history.map((item, idx) => (
-                <div key={idx} className="p-3 border border-gray-200 rounded-lg">
+                <div key={idx} className="p-3 border border-border rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <Clock size={14} className="text-gray-400" />
                     <span className="text-xs text-gray-500">{new Date(item.changed_at).toLocaleString('ko-KR')}</span>
                   </div>
-                  <p className="text-sm text-gray-700 mb-1">{item.change_type}</p>
+                  <p className="text-sm text-gray-300 mb-1">{item.change_type}</p>
                   <p className="text-xs text-gray-500">변경자: {item.changed_by_name || item.changed_by || '알 수 없음'}</p>
                 </div>
               ))
@@ -338,8 +338,8 @@ export const DetailSidebar = () => {
       </div>
 
       {/* Actions */}
-      {!isEditing && activeTab === 'detail' && (canEdit || canDelete) && (
-        <div className="p-4 border-t border-gray-200 space-y-2">
+      {!isEditing && activeTab === 'detail' && (canEdit || canDelete) && selectedTask.level !== 'Root' && (
+        <div className="p-4 border-t border-border space-y-2">
           {canEdit && nextLevel && (
             <Button variant="primary" className="w-full" icon={Plus} onClick={handleAddChild}>
               하위 업무 추가 ({nextLevel})
@@ -349,7 +349,7 @@ export const DetailSidebar = () => {
             {canEdit && (
               <Button variant="secondary" className="flex-1" icon={Edit} onClick={enterEditMode}>수정</Button>
             )}
-            {canDelete && selectedTask.level !== 'Root' && (
+            {canDelete && (
               <Button variant="danger" className="flex-1" icon={Trash2} onClick={handleDeleteClick}>삭제</Button>
             )}
           </div>

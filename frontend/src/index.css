@@ -1,28 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* 어두운 보라색 테마 */
+  /* 다크 테마 컬러 */
   --color-primary: #7952B3;
   --color-primary-light: #9B7ACC;
   --color-primary-dark: #5E3D8F;
   --color-secondary: #8E72EE;
   --color-secondary-light: #A58FF2;
   --color-secondary-dark: #7259D9;
-  --color-sidebar-bg: #191927;
-  --color-sidebar-hover: #252538;
+  --color-sidebar-bg: #111118;
+  --color-sidebar-hover: #1E1E2A;
   --color-sidebar-active: #7952B3;
-  --color-danger: #e53935;
-  --color-success: #43a047;
+  --color-danger: #EF4444;
+  --color-success: #22C55E;
   --color-accent: #7952B3;
-  --color-surface: #E4E3EC;
+  --color-surface: #1A1A24;
+  --color-card: #1A1A24;
+  --color-base: #0D0D12;
+  --color-border: #2A2A35;
+  --color-input: #1E1E2A;
 }
 
 :root {
-  --bg-base: #E4E3EC;
-  --bg-panel: #ffffff;
-  --text-primary: #191927;
-  --text-secondary: #6b7280;
-  --border: #D0CFD9;
+  --bg-base: #0D0D12;
+  --bg-panel: #1A1A24;
+  --text-primary: #FFFFFF;
+  --text-secondary: #9CA3AF;
+  --border: #2A2A35;
 }
 
 * {
@@ -35,6 +39,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-base);
+  color: #FFFFFF;
 }
 
 #root {
@@ -48,8 +53,12 @@ body {
 }
 
 .react-flow__edge-path {
-  stroke: #b1b1b7;
+  stroke: #4a4a5a;
   stroke-width: 2;
+}
+
+.react-flow__background {
+  background-color: #0D0D12 !important;
 }
 
 /* Scrollbar styles */
@@ -59,16 +68,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #1A1A24;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: #3A3A45;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: #4A4A55;
 }
 
 /* Custom animations */

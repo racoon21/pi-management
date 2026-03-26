@@ -33,68 +33,35 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel - Dark sidebar like Databricks */}
-      <div className="hidden lg:flex lg:w-1/2 bg-sidebar-bg flex-col justify-between p-12">
-        <div>
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#7952B3] rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">PI</span>
-            </div>
-            <span className="text-white text-xl font-semibold">Management System</span>
+    <div className="min-h-screen flex bg-base">
+      {/* Left Panel - Minimal branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-sidebar-bg flex-col items-center justify-center p-12">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-[#7952B3] rounded-xl flex items-center justify-center">
+            <span className="text-white font-bold text-2xl">PI</span>
           </div>
-        </div>
-
-        {/* Feature highlights */}
-        <div className="space-y-8">
-          <h1 className="text-4xl font-bold text-white leading-tight">
-            전사 업무 프로세스<br />
-            <span className="text-[#9B7ACC]">통합 관리 시스템</span>
-          </h1>
-          <p className="text-gray-400 text-lg">
-            L1부터 L4까지 계층적 업무 구조를 시각화하고,<br />
-            변경 이력을 체계적으로 관리하세요.
-          </p>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-6 pt-8">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-[#9B7ACC]">1,000+</div>
-              <div className="text-gray-500 text-sm mt-1">업무 노드</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-[#9B7ACC]">10</div>
-              <div className="text-gray-500 text-sm mt-1">조직 단위</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-[#9B7ACC]">Real-time</div>
-              <div className="text-gray-500 text-sm mt-1">변경 추적</div>
-            </div>
+          <div>
+            <span className="text-white text-2xl font-bold block">SKB</span>
+            <span className="text-gray-400 text-sm">PI Management System</span>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-gray-600 text-sm">
-          © 2024 SK브로드밴드. All rights reserved.
         </div>
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
+      <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
             <div className="w-10 h-10 bg-[#7952B3] rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl">PI</span>
             </div>
-            <span className="text-gray-900 text-xl font-semibold">Management System</span>
+            <span className="text-white text-xl font-semibold">SKB PI Management</span>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className="bg-card border border-border rounded-2xl p-8">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">로그인</h2>
-              <p className="text-gray-500 mt-2">계정 정보를 입력하세요</p>
+              <h2 className="text-2xl font-bold text-white">로그인</h2>
+              <p className="text-gray-400 mt-2">계정 정보를 입력하세요</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -119,7 +86,7 @@ export const LoginPage = () => {
               />
 
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                <div className="p-3 bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-sm">
                   {error}
                 </div>
               )}
@@ -139,7 +106,7 @@ export const LoginPage = () => {
 
           <p className="text-center text-gray-500 text-sm mt-6">
             계정이 없으신가요?{' '}
-            <Link to="/signup" className="text-[#7952B3] hover:underline font-medium">
+            <Link to="/signup" className="text-[#9B7ACC] hover:underline font-medium">
               회원가입
             </Link>
           </p>

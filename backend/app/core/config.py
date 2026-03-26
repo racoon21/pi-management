@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # DB Connection Pool
-    DB_POOL_SIZE: int = 5
-    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 30
     DB_POOL_RECYCLE: int = 300
 
     # Rate Limiting
@@ -67,9 +67,9 @@ class Settings(BaseSettings):
         # 개발 환경 기본값
         if self.ENVIRONMENT == "development":
             return [
-                "http://localhost:5173",
+                "http://localhost:15173",
                 "http://localhost:3000",
-                "http://127.0.0.1:5173",
+                "http://127.0.0.1:15173",
                 "http://127.0.0.1:3000",
             ]
 

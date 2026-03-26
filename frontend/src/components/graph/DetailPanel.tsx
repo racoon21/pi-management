@@ -73,9 +73,9 @@ export const DetailPanel = () => {
   };
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 flex flex-col animate-slideIn">
+    <div className="w-96 bg-card border-l border-border flex flex-col animate-slideIn">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant={selectedTask.is_ai_utilized ? 'ai' : 'primary'}>
             {selectedTask.level}
@@ -89,21 +89,21 @@ export const DetailPanel = () => {
         </div>
         <button
           onClick={() => selectTask(null)}
-          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#2A2A35] rounded-lg transition-colors"
         >
           <X size={20} />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-border">
         <button
           onClick={() => setActiveTab('detail')}
           className={clsx(
             'flex-1 py-3 text-sm font-medium transition-colors',
             activeTab === 'detail'
               ? 'text-[#7952B3] border-b-2 border-[#7952B3]'
-              : 'text-gray-500 hover:text-gray-700'
+              : 'text-gray-500 hover:text-gray-300'
           )}
         >
           상세 정보
@@ -114,7 +114,7 @@ export const DetailPanel = () => {
             'flex-1 py-3 text-sm font-medium transition-colors',
             activeTab === 'history'
               ? 'text-[#7952B3] border-b-2 border-[#7952B3]'
-              : 'text-gray-500 hover:text-gray-700'
+              : 'text-gray-500 hover:text-gray-300'
           )}
         >
           변경 이력 ({histories.length})
@@ -166,9 +166,9 @@ export const DetailPanel = () => {
                   id="is_ai_utilized"
                   checked={editData.is_ai_utilized}
                   onChange={(e) => setEditData({ ...editData, is_ai_utilized: e.target.checked })}
-                  className="w-4 h-4 text-[#7952B3] border-gray-300 rounded focus:ring-[#7952B3]"
+                  className="w-4 h-4 text-[#7952B3] border-border rounded focus:ring-[#7952B3]"
                 />
-                <label htmlFor="is_ai_utilized" className="text-sm text-gray-700">
+                <label htmlFor="is_ai_utilized" className="text-sm text-gray-300">
                   AI 활용 업무
                 </label>
               </div>
@@ -178,7 +178,7 @@ export const DetailPanel = () => {
             <div className="space-y-6">
               {/* Name */}
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">{selectedTask.name}</h3>
+                <h3 className="text-xl font-semibold text-white">{selectedTask.name}</h3>
               </div>
 
               {/* Info Grid */}
@@ -187,7 +187,7 @@ export const DetailPanel = () => {
                   <Building size={18} className="text-gray-400 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-500">조직</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedTask.organization}</p>
+                    <p className="text-sm font-medium text-white">{selectedTask.organization}</p>
                   </div>
                 </div>
 
@@ -196,7 +196,7 @@ export const DetailPanel = () => {
                     <Building size={18} className="text-gray-400 mt-0.5" />
                     <div>
                       <p className="text-sm text-gray-500">팀</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedTask.team}</p>
+                      <p className="text-sm font-medium text-white">{selectedTask.team}</p>
                     </div>
                   </div>
                 )}
@@ -206,7 +206,7 @@ export const DetailPanel = () => {
                     <User size={18} className="text-gray-400 mt-0.5" />
                     <div>
                       <p className="text-sm text-gray-500">담당자</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-white">
                         {selectedTask.manager_name} ({selectedTask.manager_id})
                       </p>
                     </div>
@@ -217,7 +217,7 @@ export const DetailPanel = () => {
                   <Calendar size={18} className="text-gray-400 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-500">최종 수정일</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-white">
                       {new Date(selectedTask.updated_at).toLocaleDateString('ko-KR')}
                     </p>
                   </div>
@@ -241,7 +241,7 @@ export const DetailPanel = () => {
               </div>
 
               {/* Version Info */}
-              <div className="p-3 bg-gray-50 rounded-lg">
+              <div className="p-3 bg-[#1E1E2A] rounded-lg">
                 <p className="text-xs text-gray-500">
                   버전 {selectedTask.version} · ID: {selectedTask.id.substring(0, 8)}...
                 </p>
@@ -260,7 +260,7 @@ export const DetailPanel = () => {
                 key={history.id}
                 className={clsx(
                   'p-4 rounded-lg border',
-                  index === 0 ? 'border-[#7952B3] bg-[#7952B3]/5' : 'border-gray-200'
+                  index === 0 ? 'border-[#7952B3] bg-[#7952B3]/5' : 'border-border'
                 )}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -277,7 +277,7 @@ export const DetailPanel = () => {
                   </Badge>
                   <span className="text-xs text-gray-500">v{history.version}</span>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-400">
                   {new Date(history.changed_at).toLocaleString('ko-KR')}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
@@ -291,7 +291,7 @@ export const DetailPanel = () => {
 
       {/* Footer Actions */}
       {activeTab === 'detail' && (
-        <div className="px-6 py-4 border-t border-gray-200">
+        <div className="px-6 py-4 border-t border-border">
           {isEditing ? (
             <div className="flex gap-2">
               <Button

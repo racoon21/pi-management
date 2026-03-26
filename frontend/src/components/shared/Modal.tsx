@@ -50,14 +50,14 @@ export const Modal = ({
       {/* Modal */}
       <div
         className={clsx(
-          'relative bg-white rounded-lg shadow-xl w-full mx-4 animate-fadeIn',
+          'relative bg-card border border-border rounded-lg shadow-xl w-full mx-4 animate-fadeIn',
           sizeClasses[size]
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-6 py-4 border-b border-gray-200 gap-4">
+        <div className="flex items-start justify-between px-6 py-4 border-b border-border gap-4">
           <h2
-            className="text-lg font-semibold text-gray-900 leading-snug flex-1"
+            className="text-lg font-semibold text-white leading-snug flex-1"
             style={{
               display: '-webkit-box',
               WebkitLineClamp: 3,
@@ -71,7 +71,7 @@ export const Modal = ({
           {showCloseButton && (
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+              className="p-1 text-gray-400 hover:text-white hover:bg-[#2A2A35] rounded-lg transition-colors flex-shrink-0"
             >
               <X size={20} />
             </button>
