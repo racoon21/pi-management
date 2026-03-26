@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Network,
+  List,
   Upload,
   Shield,
   Users,
@@ -27,6 +28,7 @@ interface NavItem {
 const getMainNavItems = (canUpload: boolean): NavItem[] => [
   { icon: LayoutDashboard, label: '대시보드', path: '/' },
   { icon: Network, label: '업무 그래프', path: '/graph' },
+  { icon: List, label: '업무 목록', path: '/tasks/list' },
   ...(canUpload ? [{ icon: Upload, label: '엑셀 업로드', path: '/upload' }] : []),
 ];
 

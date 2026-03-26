@@ -2,7 +2,7 @@
 
 > **이 문서는 AI 코딩 어시스턴트(Codex, Claude, Cursor 등)와 함께 개발하기 위해 최적화된 명세서입니다.**
 > 코드 수정 시 이 문서를 먼저 읽고 전체 구조를 파악한 뒤 작업해 주세요.
-> 최종 업데이트: 2026-03-18
+> 최종 업데이트: 2026-03-26
 
 ---
 
@@ -139,7 +139,7 @@
 | 인터랙티브 그래프 | ReactFlow 기반 계층형 태스크 트리 시각화 |
 | 하이브리드 레이아웃 | Root→L1→L2: 방사형(Radial), L2→L3→L4: 계층형(Hierarchical) |
 | 노드 확장/축소 | 클릭 시 하위 노드 토글, 전체 확장/축소 버튼 |
-| 필터링 | 조직, 레벨, AI 활용 여부로 필터 (필터 시 조상 노드 자동 유지) |
+| 필터링 | 조직, 레벨, AI 활용 여부, 텍스트 검색으로 필터 (필터 시 조상 노드 자동 유지) |
 | 노드 선택 | 클릭 시 우측 DetailSidebar 에 상세 정보 표시 |
 | 태스크 CRUD | 생성(하위 추가), 수정(모달), 삭제(확인 모달) |
 | 변경 이력 | 태스크별 변경 히스토리 조회 (HistoryModal) |
@@ -154,10 +154,10 @@
 | `TaskGraph` | `TaskGraph.tsx` | ReactFlow 컨테이너, 레이아웃 계산, 필터링 로직 |
 | `TaskNode` | `TaskNode.tsx` | 커스텀 노드 (레벨별 색상, AI 배지, 자식 수 표시) |
 | `MinDistanceEdge` | `MinDistanceEdge.tsx` | 커스텀 엣지 (최소 거리 기반 곡선 경로) |
-| `FilterBar` | `FilterBar.tsx` | 조직/레벨/AI 필터 드롭다운, 전체 확장/축소 |
+| `FilterBar` | `FilterBar.tsx` | 조직/레벨/AI/검색 필터 드롭다운, L1 포커스, 전체 확장/축소 |
 | `DetailSidebar` | `DetailSidebar.tsx` | 우측 상세 패널 (정보 탭 + 이력 탭) |
 | `DetailPanel` | `DetailPanel.tsx` | 태스크 상세 정보 표시 |
-| `TaskFormModal` | `TaskFormModal.tsx` | 태스크 생성/수정 모달 폼 |
+| `TaskFormModal` | `TaskFormModal.tsx` | 태스크 생성/수정/상세 모달 (하위 추가, 삭제 버튼 포함) |
 | `HistoryModal` | `HistoryModal.tsx` | 변경 이력 모달 |
 | `ContextMenu` | `ContextMenu.tsx` | 우클릭 컨텍스트 메뉴 |
 | `GlobalModal` | `GlobalModal.tsx` | 모달 타입 라우팅 (confirm/edit/create/delete/history) |
@@ -257,7 +257,8 @@ pi-management/
 │       │   └── rate_limit.py          # 엔드포인트별 Rate Limiting
 │       ├── models/
 │       │   ├── user.py                # User ORM 모델
-│       │   └── task.py                # Task, TaskHistory ORM 모델
+│       │   ├── task.py                # Task, TaskHistory ORM 모델
+│       │   └── task_relation.py       # TaskRelation M:N 연결 모델
 │       ├── schemas/
 │       │   ├── task.py                # TaskCreate, TaskUpdate, TaskDetail, TaskGraphItem
 │       │   ├── user.py                # User 스키마 (RegisterRequest, UserListResponse, RoleUpdateRequest, ActiveUpdateRequest)
@@ -288,7 +289,8 @@ pi-management/
 │   │   │   ├── PendingApprovalPage.tsx # 승인 대기 페이지 (role="none")
 │   │   │   ├── DashboardPage.tsx      # 대시보드 (KPI, 통계, 퀵 액션)
 │   │   │   ├── GraphPage.tsx          # 그래프 시각화 메인 페이지
-│   │   │   └── UploadPage.tsx         # 엑셀 업로드 (4단계 워크플로우)
+│   │   │   ├── UploadPage.tsx         # 엑셀 업로드 (4단계 워크플로우)
+│   │   │   └── TaskListPage.tsx      # 업무 목록 테이블 뷰 (인라인 편집)
 │   │   ├── admin/
 │   │   │   └── pages/
 │   │   │       ├── AdminPageTemplate.tsx  # Admin 페이지 공통 템플릿
@@ -371,6 +373,7 @@ pi-management/
 /users              → DashboardPage         (미구현 - 홈 별칭)
 /settings           → DashboardPage         (미구현 - 홈 별칭)
 /upload             → UploadPage            (MainLayout 래핑, editor/admin만 이용 가능)
+/tasks/list         → TaskListPage          (MainLayout 래핑, 테이블 뷰 + 인라인 편집)
 
 # Admin 전용 라우트 (AdminRoute 래핑, admin role만 접근)
 /admin              → AdminDashboardPage    (placeholder)
@@ -420,7 +423,7 @@ pi-management/
 | `expandedNodes` | `Set<string>` | 확장된 노드 ID 집합 |
 | `isLoading` | `boolean` | 로딩 상태 |
 | `error` | `string \| null` | 에러 메시지 |
-| `filters` | `{organization, level, isAiUtilized}` | 필터 조건 |
+| `filters` | `{organization, level, isAiUtilized, searchQuery}` | 필터 조건 |
 
 | 액션 | 설명 |
 |------|------|
@@ -474,6 +477,7 @@ pi-management/
 | `manager_name` | VARCHAR(50) | 담당자명 (nullable) |
 | `manager_id` | VARCHAR(20) | 담당자 사번 (nullable) |
 | `keywords` | TEXT[] | 키워드 배열 (GIN 인덱스) |
+| `related_team` | TEXT[] | 유관팀 배열 (L3/L4만 사용, nullable) |
 | `is_ai_utilized` | BOOLEAN | AI 활용 여부 (기본 false) |
 | `version` | INTEGER | 낙관적 잠금용 버전 (기본 1) |
 | `created_by` | UUID (FK → users.id) | 생성자 |
@@ -498,6 +502,18 @@ pi-management/
 
 **인덱스**: `task_id`, `changed_at DESC`
 
+#### task_relations 테이블
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | UUID (PK) | gen_random_uuid() |
+| `task_id_a` | UUID (FK → tasks.id) | 연결 태스크 A (정규화: a < b) |
+| `task_id_b` | UUID (FK → tasks.id) | 연결 태스크 B |
+| `created_by` | UUID (FK → users.id) | 생성자 |
+| `created_at` | TIMESTAMPTZ | 생성일시 |
+
+**제약**: `UNIQUE(task_id_a, task_id_b)`, 정규화 `task_id_a < task_id_b`로 중복 방지
+
 ### 6.2 TypeScript 타입 정의
 
 **파일**: `frontend/src/types/task.ts`
@@ -511,11 +527,13 @@ interface TaskGraphItem {
   level: TaskLevel;
   name: string;
   organization: string;
+  organization_type: OrganizationType | null;
   team: string | null;
   manager_name: string | null;
   manager_id: string | null;
-  keywords: string[] | null;
+  keywords: string[];
   is_ai_utilized: boolean;
+  related_team: string[] | null;
 }
 
 interface TaskDetail extends TaskGraphItem {
@@ -582,6 +600,10 @@ interface ApiResponse<T> {
 | DELETE | `/api/tasks/{id}` | Soft Delete (자식 있으면 거부) | AdminUser (admin) |
 | GET | `/api/tasks/{id}/history` | 변경 이력 조회 | ActiveUser (viewer+) |
 | GET | `/api/tasks/{id}/descendants` | 하위 노드 목록 조회 | ActiveUser (viewer+) |
+| GET | `/api/tasks/{id}/relations` | 연결 업무 목록 조회 | ActiveUser (viewer+) |
+| POST | `/api/tasks/{id}/relations` | 연결 업무 추가 | EditorUser (editor/admin) |
+| DELETE | `/api/tasks/{id}/relations/{related_id}` | 연결 업무 삭제 | EditorUser (editor/admin) |
+| GET | `/api/tasks/search/query?q=` | 태스크 검색 (자동완성) | ActiveUser (viewer+) |
 
 **GET /api/tasks/graph 쿼리 파라미터**:
 - `organization`: 조직 필터
@@ -705,9 +727,9 @@ permissions.isAdmin(user)       // admin
 ```bash
 # Docker Compose (전체)
 docker-compose up -d
-# PostgreSQL: localhost:5432
-# Backend: localhost:8000
-# Frontend: localhost:5173
+# PostgreSQL: localhost:15432
+# Backend: localhost:18000
+# Frontend: localhost:15173
 
 # 또는 수동 실행
 cd backend && python -m uvicorn app.main:app --reload --port 8000
@@ -806,15 +828,35 @@ npm run build    # tsc -b && vite build → dist/
 - [x] 인터랙티브 그래프 시각화 (하이브리드 레이아웃)
 - [x] 태스크 CRUD (생성, 수정, 삭제, 상세 조회) + 권한별 UI 제어
 - [x] 변경 이력 관리 (JSONB 스냅샷)
-- [x] 조직/레벨/AI 필터링 (조상 노드 자동 유지)
+- [x] 조직/레벨/AI/텍스트 검색 필터링 (조상 노드 자동 유지)
 - [x] 노드 확장/축소 (개별 + 전체)
 - [x] 엑셀 업로드 (4단계 워크플로우: 업로드→미리보기→비교→반영)
 - [x] 반응형 레이아웃 (사이드바 접기/펼치기)
 - [x] Cloudflare + Render + Supabase 배포
 - [x] PgBouncer 호환 DB 연결
 - [x] Docker Compose 개발 환경 (DB + Backend + Frontend)
-
 - [x] Admin 활동 로그 원천 연결 (task history + 계정 등록 통합 activity feed, 기본 조회 화면)
+
+**upgrade_plan_260325.md 기반 구현 (2026-03-25~26):**
+- [x] Feature 1: Docker 포트 마이그레이션 (15432, 18000, 15173)
+- [x] Feature 2: pgvector 확장 설정
+- [x] Feature 3: JWT→DB 조회 권한 체크 전환
+- [x] Feature 4: 전체 다크 테마 전환
+- [x] Feature 5: L1 방사형 + L2~L4 계층형 그래프 레이아웃
+- [x] Feature 6: 그래프 노드 UX 개선 (하이라이트, AI/전체 카운트, 더블클릭 상세, Root 보호)
+- [x] Feature 7: L3/L4 유관팀(related_team) ARRAY 필드 + 레벨별 입력 차등화
+- [x] Feature 10: 양방향 M:N 연결 업무 (task_relations 테이블, 자동완성 검색)
+- [x] Feature 11: 업무 목록 테이블 뷰 (정렬, 인라인 편집, 필터, 페이지네이션)
+- [x] Feature 12: 업로드 100MB 지원 + 엑셀 파서 유관팀 E/G열 파싱 + DB 풀 증가
+
+**추가 UX 개선 (2026-03-26, post-upgrade):**
+- [x] 그래프 검색 필터: FilterBar에 텍스트 검색 추가, TaskGraph에서 검색 결과 + 조상 체인만 표시
+- [x] TaskFormModal 상세 모달에 "하위 업무 추가" 버튼 (editor/admin, L4 제외) + "삭제" 버튼 (admin, Root 제외)
+- [x] TaskListPage 행 hover에 "하위 추가" 버튼 (editor/admin, L4 제외), Root 삭제 보호 추가
+
+**스킵/제거:**
+- [~] Feature 8: AI 자동 태깅 — 사용자 요청으로 제거
+- [~] Feature 9: 벡터 검색 — Feature 8 의존성으로 스킵
 
 ### 미구현 / 개선 필요
 
@@ -822,7 +864,7 @@ npm run build    # tsc -b && vite build → dist/
 - [ ] Admin 활동 로그 관리자 감사 로그 저장 및 추가 데이터 원천 확장
 - [ ] Redis 기반 토큰 블랙리스트 (현재 인메모리)
 - [ ] 노드 드래그 앤 드롭 계층 이동
-- [ ] 키워드/담당자 통합 검색
+- [ ] 벡터 검색 + AI 자동 태깅 (OpenAI API 키 필요, 현재 스킵)
 - [ ] 대량 데이터(3,000+ 노드) 성능 최적화 테스트
 - [ ] E2E 테스트 및 단위 테스트
 - [ ] CI/CD 파이프라인
@@ -917,7 +959,7 @@ npm run build    # tsc -b && vite build → dist/
 
 
 
-### 2026-03-23 - `feature/admin-logs/history-ui` (current)
+### 2026-03-23 - `feature/admin-logs/history-ui` (merged)
 
 - Frontend `AdminLogsPage` 고도화: 원천 필터에 더해 이벤트 타입 필터, 검색 입력, 결과 테이블, 선택 상세 패널, 최근 100건 페이지네이션 추가
 - Frontend 집계 표시 보정: 원천 필터에 따라 `전체 이벤트` 숫자가 해당 원천 총합으로 보이도록 조정, 목록 배지/조직 셀 줄바꿈 최소화
@@ -925,4 +967,62 @@ npm run build    # tsc -b && vite build → dist/
 - Backend `/api/admin/logs/activities` 확장: `action`/`query`/`limit` 필터, `action_counts`와 `filtered_count` 응답 추가, 기본 조회 limit 100으로 상향
 - `frontend/src/api/adminApi.ts` 와 `backend/app/schemas/user.py` 확장으로 history UI 전용 타입 연결
 - 검증 완료: `frontend npm run build` 성공, `admin/admin123` 로그인 후 logs endpoint 200 응답 확인, `source=task_history` + `action=TASK_UPDATE` + `query=admin` 조합 응답 확인
+
+### 2026-03-25~26 - upgrade_plan_260325.md 대규모 업그레이드 (main, uncommitted)
+
+**Stage 1 — 인프라 기반 (완료)**
+- Feature 1: Docker 포트 +10000 (15432, 18000, 15173) — `docker-compose.yml`, `vite.config.ts`, CORS 설정
+- Feature 2: pgvector 확장 — `pgvector/pgvector:pg15` 이미지, `CREATE EXTENSION IF NOT EXISTS vector`
+
+**Stage 2 — 핵심 변경 (완료)**
+- Feature 3: JWT→DB 권한 체크 — `deps.py`에서 매 요청 DB 조회로 전환
+- Feature 4: 전체 다크 테마 — `index.css` CSS 변수, 모든 페이지/컴포넌트 다크 전환
+- Feature 5: 그래프 레이아웃 — L1만 방사형, L2~L4 계층형으로 변경
+- Feature 6: 그래프 노드 UX — 페이드아웃 제거, AI/전체 카운트 표시, 더블클릭 상세, Root 보호
+
+**Stage 3 — 데이터 모델 확장 (완료)**
+- Feature 7: `related_team` ARRAY 필드 (L3/L4만), 쉼표 구분 배지 표시, seed 데이터 포함
+- Feature 10: `task_relations` M:N 테이블, 양방향 연결 업무, 자동완성 검색, 칩 UI
+- Feature 8: AI 자동 태깅 — **사용자 요청으로 제거**
+
+**Stage 4 — 스킵**
+- Feature 9: 벡터 검색 — Feature 8 의존성으로 **사용자 요청으로 스킵**
+
+**Stage 5 — 보조 기능 (완료)**
+- Feature 11: `/tasks/list` 업무 목록 테이블 뷰 — 정렬, 인라인 편집(Enter/Escape), 필터(레벨/조직/AI/검색), 50행 페이지네이션, 권한별 편집/삭제
+- Feature 12: 업로드 100MB 확대, 1MB 청크 스트리밍, 엑셀 E/G열 유관팀 파싱, DB 풀 20/30
+
+**검증**: Docker 재빌드 + admin 로그인 + API 1,028개 노드 정상 반환 + 빌드 성공 확인
+
+**주요 수정 파일 (백엔드)**:
+- `backend/app/models/task.py` — `related_team` ARRAY 컬럼 추가
+- `backend/app/models/task_relation.py` — **신규** M:N 연결 모델
+- `backend/app/schemas/task.py` — `related_team` 스키마 반영
+- `backend/app/services/task_service.py` — 연결 업무 CRUD, 검색 함수
+- `backend/app/api/tasks.py` — 연결/검색 엔드포인트 4개 추가
+- `backend/app/services/upload_service.py` — E/G열 유관팀 파싱
+- `backend/app/api/upload.py` — 100MB + 스트리밍 청크
+- `backend/app/core/config.py` — DB 풀 20/30
+- `backend/app/db/seed.py` — 유관팀 샘플 데이터
+
+**주요 수정 파일 (프론트엔드)**:
+- `frontend/src/pages/TaskListPage.tsx` — **신규** 테이블 뷰 페이지
+- `frontend/src/components/graph/TaskFormModal.tsx` — 유관팀 입력, 연결 업무 UI
+- `frontend/src/api/taskApi.ts` — 연결/검색 API 함수
+- `frontend/src/stores/taskStore.ts` — `related_team` 필드 지원
+- `frontend/src/types/task.ts` — `related_team`, `TaskRelationItem` 타입
+- `frontend/src/App.tsx` — `/tasks/list` 라우트
+- `frontend/src/components/layout/Sidebar.tsx` — "업무 목록" 네비 항목
+- 다크 테마: `index.css` + 전 페이지/컴포넌트 스타일 전환
+
+### 2026-03-26 - 업그레이드 후 UX 개선 (main, uncommitted)
+
+**그래프 검색 필터:**
+- `taskStore.ts`: `filters`에 `searchQuery: string | null` 추가
+- `FilterBar.tsx`: 검색 입력 필드 추가 (Search 아이콘, 필터 패널 내)
+- `TaskGraph.tsx`: `filteredTasks`에 텍스트 검색 로직 추가 (이름/조직/팀/담당자/키워드 매칭 + 조상 체인 유지)
+
+**하위 업무 추가 + 삭제 버튼:**
+- `TaskFormModal.tsx`: view 모드에 "하위 업무 추가" (editor/admin, L4 제외) + "삭제" (admin, Root 제외) 버튼 추가. `openModal`, `deleteTask`, `permissions`, `useAuthStore` 연결
+- `TaskListPage.tsx`: 행 hover 액션에 Plus 버튼 추가 (editor/admin, L4 제외). `useModalStore` 연결, `NEXT_LEVEL` 맵 추가. Root 노드 삭제 보호 추가
 
