@@ -12,6 +12,7 @@ interface TaskCreateData {
   team?: string | null;
   manager_name?: string | null;
   manager_id?: string | null;
+  related_team?: string[] | null;
   keywords?: string[];
   is_ai_utilized?: boolean;
 }
@@ -23,6 +24,7 @@ interface TaskUpdateData {
   team?: string | null;
   manager_name?: string | null;
   manager_id?: string | null;
+  related_team?: string[] | null;
   keywords?: string[];
   is_ai_utilized?: boolean;
 }
@@ -38,6 +40,7 @@ interface TaskState {
     organization: string | null;
     level: string | null;
     isAiUtilized: boolean | null;
+    searchQuery: string | null;
   };
   /** [IMP-02] L1 포커스 뷰 */
   focusedL1Id: string | null;
@@ -69,6 +72,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     organization: null,
     level: null,
     isAiUtilized: null,
+    searchQuery: null,
   },
   focusedL1Id: null,
   _lastFetchedAt: 0,
@@ -212,6 +216,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         team: data.team || '',
         manager_name: data.manager_name || '',
         manager_id: data.manager_id || '',
+        related_team: data.related_team || null,
         keywords: data.keywords || [],
         is_ai_utilized: data.is_ai_utilized || false,
       });
@@ -227,6 +232,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         team: newTask.team,
         manager_name: newTask.manager_name,
         manager_id: newTask.manager_id,
+        related_team: newTask.related_team,
         keywords: newTask.keywords,
         is_ai_utilized: newTask.is_ai_utilized,
       };
@@ -254,6 +260,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         team: updates.team || undefined,
         manager_name: updates.manager_name || undefined,
         manager_id: updates.manager_id || undefined,
+        related_team: updates.related_team,
         keywords: updates.keywords,
         is_ai_utilized: updates.is_ai_utilized,
       });
@@ -270,6 +277,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
                 team: updatedTask.team,
                 manager_name: updatedTask.manager_name,
                 manager_id: updatedTask.manager_id,
+                related_team: updatedTask.related_team,
                 keywords: updatedTask.keywords,
                 is_ai_utilized: updatedTask.is_ai_utilized,
               }

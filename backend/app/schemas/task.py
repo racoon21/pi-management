@@ -17,6 +17,7 @@ class TaskGraphItem(BaseModel):
     organization_type: str | None = None
     is_ai_utilized: bool
     keywords: list[str] | None = None
+    related_team: list[str] | None = None
 
     class Config:
         from_attributes = True
@@ -41,6 +42,7 @@ class TaskCreate(BaseModel):
     team: str | None = None
     manager_name: str | None = None
     manager_id: str | None = None
+    related_team: list[str] | None = None
     keywords: list[str] | None = None
     is_ai_utilized: bool = False
 
@@ -59,6 +61,7 @@ class TaskUpdate(BaseModel):
     team: str | None = None
     manager_name: str | None = None
     manager_id: str | None = None
+    related_team: list[str] | None = None
     keywords: list[str] | None = None
     is_ai_utilized: bool | None = None
 

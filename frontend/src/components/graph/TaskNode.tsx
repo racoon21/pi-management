@@ -46,26 +46,28 @@ interface TaskNodeData {
   hasChildren?: boolean;
   isExpanded?: boolean;
   childCount?: number;
+  totalDescendants?: number;
+  aiDescendants?: number;
 }
 
 export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
   const styles = levelStyles[data.level] || levelStyles.L4;
-  const isBlurred = data.isBlurred;
   const hasChildren = data.hasChildren;
   const isExpanded = data.isExpanded;
   const childCount = data.childCount || 0;
+  const totalDescendants = data.totalDescendants || 0;
+  const aiDescendants = data.aiDescendants || 0;
 
   return (
     <div
       className={`
         relative px-2.5 py-1.5 rounded-lg border w-[200px]
-        ${styles.bg} ${selected ? 'ring-2 ring-[#7952B3] ring-offset-2' : styles.border}
+        ${styles.bg} ${selected ? 'ring-2 ring-[#9B7ACC] ring-offset-1 ring-offset-[#0D0D12]' : styles.border}
         transition-all duration-200 cursor-pointer
         hover:shadow-md hover:scale-[1.02]
-        ${isBlurred ? 'opacity-30 blur-[1px] scale-95' : 'opacity-100 blur-0 scale-100'}
       `}
     >
-      {/* Target Handle (invisible - custom edge calculates path) */}
+      {/* Target Handle */}
       {data.level !== 'Root' && (
         <Handle
           type="target"
@@ -77,7 +79,6 @@ export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
       {/* Header - Level Badge & AI indicator */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1">
-          {/* Expand/Collapse Icon */}
           {hasChildren && (
             <div className="flex items-center justify-center w-3.5 h-3.5 flex-shrink-0">
               {isExpanded ? (
@@ -90,23 +91,33 @@ export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
           <span className={`px-1 py-0.5 text-[9px] font-bold rounded ${styles.badge}`}>
             {data.level}
           </span>
-          {/* Child count indicator */}
           {hasChildren && !isExpanded && (
             <span className={`text-[9px] ${styles.text} opacity-70`}>
               (+{childCount})
             </span>
           )}
         </div>
-        {/* [IMP-06] L4 노드에서만 AI 배지 표시 */}
-        {data.level === 'L4' && data.is_ai_utilized && (
+        {/* [Feature 6] L4에서만 AI 배지, 비-리프 노드에서 AI/전체 카운트 */}
+        {data.level === 'L4' && data.is_ai_utilized ? (
           <div className="flex items-center gap-0.5">
             <Sparkles size={10} className="text-[#7952B3]" />
             <span className={`text-[9px] ${styles.text} opacity-80`}>AI</span>
           </div>
-        )}
+        ) : data.level !== 'L4' && totalDescendants > 0 ? (
+          <div className="flex items-center gap-1">
+            {aiDescendants > 0 && (
+              <span className={`text-[8px] ${styles.text} opacity-60`}>
+                AI {aiDescendants}
+              </span>
+            )}
+            <span className={`text-[8px] ${styles.text} opacity-50`}>
+              / {totalDescendants}
+            </span>
+          </div>
+        ) : null}
       </div>
 
-      {/* Text - 고정 너비에서 최대 2줄 표시 */}
+      {/* Text */}
       <div className="min-w-0">
         <div
           className={`text-xs font-medium ${styles.text} leading-snug`}
@@ -123,7 +134,7 @@ export const TaskNode = memo(({ data, selected }: NodeProps<TaskNodeData>) => {
         </div>
       </div>
 
-      {/* Source Handle (invisible - custom edge calculates path) */}
+      {/* Source Handle */}
       {data.level !== 'L4' && (
         <Handle
           type="source"

@@ -1,5 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Query
+from pydantic import BaseModel
 from app.api.deps import DbSession, ActiveUser, EditorUser, AdminUser
 from app.schemas import ApiResponse, TaskGraphItem, TaskDetail, TaskCreate, TaskUpdate, TaskHistoryResponse
 from app.services import task_service
@@ -91,6 +92,40 @@ async def get_descendants(task_id: UUID, db: DbSession, current_user: ActiveUser
         success=True,
         data=[TaskGraphItem.model_validate(d) for d in descendants],
     )
+
+
+class RelationRequest(BaseModel):
+    related_task_id: UUID
+
+
+@router.get("/{task_id}/relations", response_model=ApiResponse[list[TaskGraphItem]])
+async def get_relations(task_id: UUID, db: DbSession, current_user: ActiveUser):
+    related = await task_service.get_related_tasks(db, task_id)
+    return ApiResponse(success=True, data=[TaskGraphItem.model_validate(t) for t in related])
+
+
+@router.post("/{task_id}/relations", response_model=ApiResponse[bool])
+async def add_relation(task_id: UUID, data: RelationRequest, db: DbSession, current_user: EditorUser):
+    try:
+        await task_service.add_relation(db, task_id, data.related_task_id, current_user.id)
+        return ApiResponse(success=True, data=True)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/{task_id}/relations/{related_id}", response_model=ApiResponse[bool])
+async def remove_relation(task_id: UUID, related_id: UUID, db: DbSession, current_user: EditorUser):
+    try:
+        await task_service.remove_relation(db, task_id, related_id)
+        return ApiResponse(success=True, data=True)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/search/query", response_model=ApiResponse[list[TaskGraphItem]])
+async def search_tasks(q: str = Query("", min_length=1), db: DbSession = None, current_user: ActiveUser = None):
+    tasks = await task_service.search_tasks(db, q)
+    return ApiResponse(success=True, data=[TaskGraphItem.model_validate(t) for t in tasks])
 
 
 @router.get("/{task_id}/history", response_model=ApiResponse[list[TaskHistoryResponse]])

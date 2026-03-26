@@ -61,6 +61,7 @@ const generateMockTasks = (): TaskGraphItem[] => {
     manager_id: 'CEO001',
     keywords: ['SKB', '통신', '브로드밴드'],
     is_ai_utilized: false,
+    related_team: null,
   });
 
   // L1 노드 (10개)
@@ -80,6 +81,7 @@ const generateMockTasks = (): TaskGraphItem[] => {
       manager_id: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].id,
       keywords: org.keywords,
       is_ai_utilized: Math.random() > 0.7,
+      related_team: null,
     });
   });
 
@@ -103,6 +105,7 @@ const generateMockTasks = (): TaskGraphItem[] => {
         manager_id: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].id,
         keywords: [...l1Org.keywords, l2Cat],
         is_ai_utilized: Math.random() > 0.6,
+        related_team: null,
       });
 
       L3_SUBCATEGORIES.forEach((l3Sub) => {
@@ -119,6 +122,7 @@ const generateMockTasks = (): TaskGraphItem[] => {
           manager_id: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].id,
           keywords: [...l1Org.keywords, l2Cat, l3Sub],
           is_ai_utilized: Math.random() > 0.5,
+          related_team: null,
         });
 
         // L4 노드 생성 (각 L3당 약 6-7개)
@@ -145,6 +149,7 @@ const generateMockTasks = (): TaskGraphItem[] => {
             manager_id: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].id,
             keywords: [...l1Org.keywords, l2Cat, l3Sub, taskName],
             is_ai_utilized: Math.random() > 0.4,
+            related_team: null,
           });
           l4Count++;
         }

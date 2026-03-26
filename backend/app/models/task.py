@@ -20,6 +20,7 @@ class Task(Base):
     team: Mapped[str | None] = mapped_column(String(100), nullable=True)
     manager_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     manager_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    related_team: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     keywords: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     is_ai_utilized: Mapped[bool] = mapped_column(Boolean, default=False)
     version: Mapped[int] = mapped_column(Integer, default=1)

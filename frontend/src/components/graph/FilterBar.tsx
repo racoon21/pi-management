@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Filter, RefreshCw, Sparkles, Maximize2, Minimize2, Focus } from 'lucide-react';
+import { Filter, RefreshCw, Sparkles, Maximize2, Minimize2, Focus, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTaskStore } from '../../stores/taskStore';
 import { Button } from '../shared/Button';
@@ -33,6 +33,7 @@ export const FilterBar = () => {
     filters.organization,
     filters.level,
     filters.isAiUtilized !== null ? 'ai' : null,
+    filters.searchQuery,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -40,16 +41,17 @@ export const FilterBar = () => {
       organization: null,
       level: null,
       isAiUtilized: null,
+      searchQuery: null,
     });
   };
 
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className="bg-card border-b border-border">
       {/* Main Bar */}
       <div className="px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-gray-900">업무 그래프</h2>
-          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full">
+          <h2 className="text-lg font-semibold text-white">업무 그래프</h2>
+          <span className="px-2 py-0.5 bg-[#2A2A35] text-gray-400 text-sm rounded-full">
             {tasks.length} 노드
           </span>
         </div>
@@ -60,7 +62,7 @@ export const FilterBar = () => {
             <select
               value={focusedL1Id || ''}
               onChange={(e) => setFocusedL1(e.target.value || null)}
-              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7952B3] min-w-[140px]"
+              className="px-3 py-1.5 bg-[#1E1E2A] border border-border text-gray-300 rounded-lg text-sm focus:outline-none focus:ring-0 focus:border-white focus:border-2 min-w-[140px]"
             >
               <option value="">전체 L1 보기</option>
               {l1Tasks.map(t => (
@@ -126,15 +128,30 @@ export const FilterBar = () => {
 
       {/* Filter Panel */}
       {showFilters && (
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+        <div className="px-6 py-4 border-t border-border bg-[#1E1E2A]">
           <div className="flex flex-wrap items-end gap-4">
+            {/* Search Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-400">검색</label>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={filters.searchQuery || ''}
+                  onChange={(e) => setFilters({ searchQuery: e.target.value || null })}
+                  placeholder="업무명, 조직, 담당자..."
+                  className="pl-8 pr-3 py-2 bg-[#1E1E2A] border border-border text-gray-300 rounded-lg text-sm focus:outline-none focus:ring-0 focus:border-white focus:border-2 min-w-[200px] placeholder-gray-600"
+                />
+              </div>
+            </div>
+
             {/* Organization Filter */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500">조직</label>
+              <label className="text-xs font-medium text-gray-400">조직</label>
               <select
                 value={filters.organization || ''}
                 onChange={(e) => setFilters({ organization: e.target.value || null })}
-                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7952B3] min-w-[160px]"
+                className="px-3 py-2 bg-[#1E1E2A] border border-border text-gray-300 rounded-lg text-sm focus:outline-none focus:ring-0 focus:border-white focus:border-2 min-w-[160px]"
               >
                 <option value="">전체</option>
                 {organizations.map(org => (
@@ -145,11 +162,11 @@ export const FilterBar = () => {
 
             {/* Level Filter */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500">레벨</label>
+              <label className="text-xs font-medium text-gray-400">레벨</label>
               <select
                 value={filters.level || ''}
                 onChange={(e) => setFilters({ level: e.target.value || null })}
-                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7952B3] min-w-[100px]"
+                className="px-3 py-2 bg-[#1E1E2A] border border-border text-gray-300 rounded-lg text-sm focus:outline-none focus:ring-0 focus:border-white focus:border-2 min-w-[100px]"
               >
                 <option value="">전체</option>
                 {levels.map(level => (
@@ -160,15 +177,15 @@ export const FilterBar = () => {
 
             {/* AI Utilized Filter */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500">AI 활용</label>
+              <label className="text-xs font-medium text-gray-400">AI 활용</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setFilters({ isAiUtilized: filters.isAiUtilized === true ? null : true })}
                   className={clsx(
                     'px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors border',
                     filters.isAiUtilized === true
-                      ? 'bg-purple-100 text-purple-700 border-purple-300'
-                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      ? 'bg-purple-900/30 text-purple-400 border-purple-700'
+                      : 'bg-[#1E1E2A] border-border text-gray-400 hover:bg-[#2A2A35]'
                   )}
                 >
                   <Sparkles size={14} />
@@ -179,8 +196,8 @@ export const FilterBar = () => {
                   className={clsx(
                     'px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
                     filters.isAiUtilized === false
-                      ? 'bg-gray-200 text-gray-800 border-gray-400'
-                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      ? 'bg-[#2A2A35] text-gray-200 border-gray-600'
+                      : 'bg-[#1E1E2A] border-border text-gray-400 hover:bg-[#2A2A35]'
                   )}
                 >
                   일반
@@ -192,7 +209,7 @@ export const FilterBar = () => {
             {activeFilterCount > 0 && (
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
               >
                 <RefreshCw size={14} />
                 초기화
