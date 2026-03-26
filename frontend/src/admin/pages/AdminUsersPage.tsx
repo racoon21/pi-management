@@ -68,7 +68,7 @@ export const AdminUsersPage = () => {
               className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                 filter === r
                   ? 'bg-[#7952B3] text-white border-[#7952B3]'
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  : 'bg-card text-gray-400 border-border hover:bg-[#2A2A35]'
               }`}
             >
               {r === '' ? '전체' : roleLabel(r)}
@@ -77,17 +77,17 @@ export const AdminUsersPage = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-[#1E1E2A] border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">사번</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">이름</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">조직</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">역할</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">상태</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">가입일</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">액션</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-400">사번</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-400">이름</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-400">조직</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-400">역할</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-400">상태</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-400">가입일</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-400">액션</th>
               </tr>
             </thead>
             <tbody>
@@ -105,10 +105,10 @@ export const AdminUsersPage = () => {
                 </tr>
               ) : (
                 users.map((u) => (
-                  <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-gray-700">{u.employee_id}</td>
-                    <td className="px-4 py-3 text-gray-900">{u.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{u.organization}</td>
+                  <tr key={u.id} className="border-b border-border hover:bg-[#2A2A35]">
+                    <td className="px-4 py-3 font-mono text-gray-300">{u.employee_id}</td>
+                    <td className="px-4 py-3 text-white">{u.name}</td>
+                    <td className="px-4 py-3 text-gray-400">{u.organization}</td>
                     <td className="px-4 py-3">
                       {u.role === 'none' ? (
                         <Badge variant="warning" size="sm">대기</Badge>
@@ -116,7 +116,7 @@ export const AdminUsersPage = () => {
                         <select
                           value={u.role}
                           onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          className="text-xs border border-gray-200 rounded px-2 py-1"
+                          className="text-xs border border-border rounded bg-[#1E1E2A] text-gray-300 px-2 py-1"
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r} value={r}>{roleLabel(r)}</option>
@@ -144,7 +144,7 @@ export const AdminUsersPage = () => {
                         )}
                         <button
                           onClick={() => handleToggleActive(u.id, u.is_active)}
-                          className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                          className="text-xs px-2 py-1 border border-border rounded hover:bg-[#2A2A35] text-gray-300 transition-colors"
                         >
                           {u.is_active ? '비활성화' : '활성화'}
                         </button>

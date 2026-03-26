@@ -43,14 +43,14 @@ export const ConfirmModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="flex flex-col items-center text-center">
-        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+        <div className="w-12 h-12 rounded-full bg-[#2A2A35] flex items-center justify-center mb-4">
           {icons[type]}
         </div>
-        <p className="text-gray-600 mb-6">{message}</p>
+        <p className="text-gray-400 mb-6">{message}</p>
         <div className="flex gap-3 w-full">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2 border border-border rounded-lg text-gray-300 hover:bg-[#2A2A35] transition-colors"
           >
             {cancelText}
           </button>

@@ -16,9 +16,10 @@ import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 서버 시작 시 커넥션 풀 워밍업 — 첫 요청 지연 제거
+    # 서버 시작 시 커넥션 풀 워밍업 + pgvector 확장 활성화
     try:
-        async with engine.connect() as conn:
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.execute(text("SELECT 1"))
     except Exception:
         pass  # DB 연결 실패해도 서버는 시작

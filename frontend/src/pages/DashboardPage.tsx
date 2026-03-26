@@ -20,14 +20,14 @@ import { clsx } from 'clsx';
 const LEVEL_COLORS: Record<string, string> = {
   Root: '#8E72EE',
   L1: '#00D7D2',
-  L2: '#191927',
+  L2: '#6B7280',
   L3: '#7259D9',
   L4: '#E4E3EC',
 };
 const LEVEL_BAR_COLORS: Record<string, string> = {
   Root: 'bg-[#8E72EE]',
   L1: 'bg-[#00D7D2]',
-  L2: 'bg-[#191927]',
+  L2: 'bg-[#6B7280]',
   L3: 'bg-[#7259D9]',
   L4: 'bg-[#B8B3D0]',
 };
@@ -162,8 +162,8 @@ export const DashboardPage = () => {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Level Distribution - Root 제외 */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Layers size={20} className="text-[#5E3D8F]" />
               레벨별 분포
             </h3>
@@ -182,13 +182,13 @@ export const DashboardPage = () => {
                     >
                       {level}
                     </span>
-                    <div className="flex-1 h-7 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-7 bg-[#2A2A35] rounded-full overflow-hidden">
                       <div
                         className={clsx('h-full rounded-full transition-all duration-700', LEVEL_BAR_COLORS[level])}
                         style={{ width: `${Math.max(percentage, 1)}%` }}
                       />
                     </div>
-                    <span className="w-20 text-sm text-gray-600 text-right font-medium">
+                    <span className="w-20 text-sm text-gray-400 text-right font-medium">
                       {count.toLocaleString()} <span className="text-gray-400 text-xs">({percentage.toFixed(1)}%)</span>
                     </span>
                   </div>
@@ -198,8 +198,8 @@ export const DashboardPage = () => {
           </div>
 
           {/* Organization Stats (L1 기준) */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <PieChart size={20} className="text-[#00D7D2]" />
               조직별 업무 현황 (L1)
             </h3>
@@ -216,13 +216,13 @@ export const DashboardPage = () => {
                     >
                       {org.name}
                     </span>
-                    <div className="flex-1 h-7 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-7 bg-[#2A2A35] rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full bg-[#B8B3D0] transition-all duration-700"
                         style={{ width: `${Math.max(org.aiPercent, 1)}%` }}
                       />
                     </div>
-                    <span className="w-24 text-sm text-gray-600 text-right font-medium">
+                    <span className="w-24 text-sm text-gray-400 text-right font-medium">
                       {org.l4Count.toLocaleString()} <span className="text-gray-400 text-xs">(AI {org.aiPercent}%)</span>
                     </span>
                   </div>
@@ -233,9 +233,9 @@ export const DashboardPage = () => {
         </div>
 
         {/* Recent Tasks */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
               <Clock size={20} className="text-[#5E3D8F]" />
               최근 업무
             </h3>
@@ -246,7 +246,7 @@ export const DashboardPage = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr className="border-b border-border">
                   <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">레벨</th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">업무명</th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">조직</th>
@@ -259,8 +259,8 @@ export const DashboardPage = () => {
                   <tr
                     key={task.id}
                     className={clsx(
-                      'hover:bg-gray-50/80 transition-colors cursor-pointer',
-                      idx < recentTasks.length - 1 && 'border-b border-gray-50'
+                      'hover:bg-[#2A2A35] transition-colors cursor-pointer',
+                      idx < recentTasks.length - 1 && 'border-b border-border'
                     )}
                     onClick={() => navigate('/graph')}
                   >
@@ -275,7 +275,7 @@ export const DashboardPage = () => {
                         {task.level}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-900 font-medium max-w-xs truncate">{task.name}</td>
+                    <td className="py-3 px-4 text-sm text-white font-medium max-w-xs truncate">{task.name}</td>
                     <td className="py-3 px-4 text-sm text-gray-500">{task.organization}</td>
                     <td className="py-3 px-4 text-sm text-gray-500">{task.manager_name || '-'}</td>
                     <td className="py-3 px-4">
@@ -317,14 +317,14 @@ const StatCard = ({
   subValue?: string;
   color: string;
 }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
+  <div className="bg-card rounded-xl border border-border p-5 transition-shadow">
     <div className="flex items-center gap-4">
       <div className={clsx('w-12 h-12 rounded-xl flex items-center justify-center shrink-0', color)}>
         <Icon size={22} className="text-white" />
       </div>
       <div className="min-w-0">
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-2xl font-bold text-white">{value}</p>
         {subValue && <p className="text-xs text-gray-500 mt-0.5">{subValue}</p>}
       </div>
     </div>

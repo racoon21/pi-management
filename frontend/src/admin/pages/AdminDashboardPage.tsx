@@ -136,7 +136,7 @@ export const AdminDashboardPage = () => {
         </section>
 
         {error && (
-          <section className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <section className="rounded-xl border border-red-800 bg-red-900/20 p-4 text-sm text-red-400">
             <div className="flex items-center justify-between gap-4">
               <span>{error}</span>
               <Button size="sm" variant="danger" onClick={fetchSummary}>
@@ -155,10 +155,10 @@ export const AdminDashboardPage = () => {
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">역할 분포</h3>
+                <h3 className="text-lg font-semibold text-white">역할 분포</h3>
                 <p className="mt-1 text-sm text-gray-500">admin / editor / viewer / pending 비율을 확인합니다.</p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => navigate('/admin/users')}>
@@ -176,9 +176,9 @@ export const AdminDashboardPage = () => {
                       <div className="flex items-center gap-2">
                         <Badge variant={meta.badgeVariant}>{meta.label}</Badge>
                       </div>
-                      <span className="font-medium text-gray-700">{formatCount(count)}명</span>
+                      <span className="font-medium text-gray-300">{formatCount(count)}명</span>
                     </div>
-                    <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-3 rounded-full bg-[#2A2A35] overflow-hidden">
                       <div className={`h-full rounded-full transition-all duration-500 ${meta.barClass}`} style={{ width }} />
                     </div>
                   </div>
@@ -187,10 +187,10 @@ export const AdminDashboardPage = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">조직별 사용자 수</h3>
+                <h3 className="text-lg font-semibold text-white">조직별 사용자 수</h3>
                 <p className="mt-1 text-sm text-gray-500">사용자 수가 많은 상위 5개 조직입니다.</p>
               </div>
               <Building2 className="text-[#5E3D8F]" size={20} />
@@ -201,10 +201,10 @@ export const AdminDashboardPage = () => {
                 {summary.organization_counts.map((item) => (
                   <div key={item.organization} className="space-y-2">
                     <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="font-medium text-gray-800 truncate">{item.organization}</span>
+                      <span className="font-medium text-gray-200 truncate">{item.organization}</span>
                       <span className="text-gray-500">{formatCount(item.user_count)}명</span>
                     </div>
-                    <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-3 rounded-full bg-[#2A2A35] overflow-hidden">
                       <div
                         className="h-full rounded-full bg-[#8E72EE] transition-all duration-500"
                         style={{ width: `${Math.max((item.user_count / orgMax) * 100, 8)}%` }}
@@ -219,10 +219,10 @@ export const AdminDashboardPage = () => {
           </div>
         </section>
 
-        <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <section className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between gap-4 mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">최근 가입 사용자</h3>
+              <h3 className="text-lg font-semibold text-white">최근 가입 사용자</h3>
               <p className="mt-1 text-sm text-gray-500">가장 최근에 생성된 계정을 확인합니다.</p>
             </div>
             <Button variant="ghost" size="sm" onClick={() => navigate('/admin/users')}>
@@ -234,7 +234,7 @@ export const AdminDashboardPage = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
                     <th className="px-4 py-3">사번</th>
                     <th className="px-4 py-3">이름</th>
                     <th className="px-4 py-3">조직</th>
@@ -248,10 +248,10 @@ export const AdminDashboardPage = () => {
                     const roleKey = user.role === 'none' ? 'pending' : user.role;
                     const roleMeta = ROLE_META[roleKey as keyof typeof ROLE_META];
                     return (
-                      <tr key={user.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/80">
-                        <td className="px-4 py-3 font-mono text-gray-700">{user.employee_id}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
-                        <td className="px-4 py-3 text-gray-600">{user.organization}</td>
+                      <tr key={user.id} className="border-b border-border last:border-b-0 hover:bg-[#2A2A35]">
+                        <td className="px-4 py-3 font-mono text-gray-300">{user.employee_id}</td>
+                        <td className="px-4 py-3 font-medium text-white">{user.name}</td>
+                        <td className="px-4 py-3 text-gray-400">{user.organization}</td>
                         <td className="px-4 py-3">
                           <Badge variant={roleMeta.badgeVariant}>{roleMeta.label}</Badge>
                         </td>
@@ -287,14 +287,14 @@ const StatCard = ({
   value: string;
   color: string;
 }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
+  <div className="bg-card rounded-xl border border-border p-5 transition-shadow">
     <div className="flex items-center gap-4">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
         <Icon size={22} className="text-white" />
       </div>
       <div className="min-w-0">
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-2xl font-bold text-white">{value}</p>
       </div>
     </div>
   </div>

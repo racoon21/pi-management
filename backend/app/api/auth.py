@@ -15,14 +15,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _user_token_data(user: User) -> dict:
-    """JWT access token에 포함할 유저 정보 (DB 조회 없이 인증 가능)."""
-    return {
-        "sub": str(user.id),
-        "employee_id": user.employee_id,
-        "name": user.name,
-        "organization": user.organization,
-        "role": user.role,
-    }
+    """JWT access token payload — sub만 포함, 권한은 매 요청 시 DB 조회."""
+    return {"sub": str(user.id)}
 
 
 @router.post("/login", response_model=ApiResponse[TokenResponse])

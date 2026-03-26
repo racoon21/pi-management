@@ -54,10 +54,10 @@ export const AdminRequestsPage = () => {
           <div className="text-center text-gray-400 py-12">로딩 중...</div>
         ) : pending.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-[#2A2A35] rounded-full flex items-center justify-center mx-auto mb-4">
               <Clock className="text-gray-400" size={32} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">대기 중인 요청이 없습니다</h3>
+            <h3 className="text-lg font-semibold text-gray-300 mb-2">대기 중인 요청이 없습니다</h3>
             <p className="text-gray-400 text-sm">새로운 가입 요청이 들어오면 여기에 표시됩니다.</p>
           </div>
         ) : (
@@ -65,17 +65,17 @@ export const AdminRequestsPage = () => {
             {pending.map((u) => (
               <div
                 key={u.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
+                className="bg-card rounded-xl border border-border p-5"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="font-semibold text-gray-900">{u.name}</h3>
+                    <h3 className="font-semibold text-white">{u.name}</h3>
                     <p className="text-sm text-gray-500 font-mono">{u.employee_id}</p>
                   </div>
                   <Badge variant="warning" size="sm">대기</Badge>
                 </div>
 
-                <div className="text-sm text-gray-600 space-y-1 mb-4">
+                <div className="text-sm text-gray-400 space-y-1 mb-4">
                   <p><span className="text-gray-400">조직:</span> {u.organization}</p>
                   <p><span className="text-gray-400">가입일:</span> {new Date(u.created_at).toLocaleDateString('ko-KR')}</p>
                 </div>

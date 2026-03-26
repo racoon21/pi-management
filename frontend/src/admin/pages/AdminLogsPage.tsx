@@ -196,7 +196,7 @@ export const AdminLogsPage = () => {
         </section>
 
         {error && (
-          <section className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <section className="rounded-xl border border-red-800 bg-red-900/20 p-4 text-sm text-red-400">
             <div className="flex items-center justify-between gap-4">
               <span>{error}</span>
               <Button size="sm" variant="danger" onClick={fetchFeed}>
@@ -213,10 +213,10 @@ export const AdminLogsPage = () => {
           <StatCard icon={UserPlus} label="계정 등록 원천" value={formatCount(feed?.source_counts.user_signup ?? 0)} tone="bg-[#F5B700]" />
         </section>
 
-        <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5">
+        <section className="bg-card rounded-xl border border-border p-6 space-y-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">로그 필터</h3>
+              <h3 className="text-lg font-semibold text-white">로그 필터</h3>
               <p className="mt-1 text-sm text-gray-500">
                 원천, 이벤트 타입, 검색어를 조합해 최근 활동 이력을 빠르게 좁혀볼 수 있습니다.
               </p>
@@ -272,9 +272,9 @@ export const AdminLogsPage = () => {
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.7fr_1fr]">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="border-b border-gray-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-gray-900">활동 목록</h3>
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="border-b border-border px-6 py-4">
+              <h3 className="text-lg font-semibold text-white">활동 목록</h3>
               <p className="mt-1 text-sm text-gray-500">최신순 최근 100건을 10건씩 페이지로 표시합니다.</p>
             </div>
 
@@ -290,7 +290,7 @@ export const AdminLogsPage = () => {
                       <col className="w-[124px]" />
                       <col className="w-[112px]" />
                     </colgroup>
-                    <thead className="bg-gray-50 border-b border-gray-200">
+                    <thead className="bg-[#1E1E2A] border-b border-border">
                       <tr>
                         <th className="px-4 py-3 text-left font-medium text-gray-500">시간</th>
                         <th className="px-4 py-3 text-left font-medium text-gray-500">원천</th>
@@ -313,8 +313,8 @@ export const AdminLogsPage = () => {
                           <tr
                             key={item.id}
                             onClick={() => setSelectedId(item.id)}
-                            className={`border-b border-gray-100 cursor-pointer transition-colors ${
-                              selectedId === item.id ? 'bg-[#7952B3]/[0.08]' : 'hover:bg-gray-50'
+                            className={`border-b border-border cursor-pointer transition-colors ${
+                              selectedId === item.id ? 'bg-[#7952B3]/[0.08]' : 'hover:bg-[#2A2A35]'
                             }`}
                           >
                             <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDateTime(item.occurred_at)}</td>
@@ -324,8 +324,8 @@ export const AdminLogsPage = () => {
                             <td className="px-4 py-3 whitespace-nowrap">
                               <Badge variant={ACTION_BADGE_VARIANT[item.action]} size="sm">{item.action_label}</Badge>
                             </td>
-                            <td className="px-4 py-3 text-gray-800"><div className="truncate" title={targetLabel}>{targetLabel}</div></td>
-                            <td className="px-4 py-3 text-gray-600"><div className="truncate" title={actorLabel}>{actorLabel}</div></td>
+                            <td className="px-4 py-3 text-gray-200"><div className="truncate" title={targetLabel}>{targetLabel}</div></td>
+                            <td className="px-4 py-3 text-gray-400"><div className="truncate" title={actorLabel}>{actorLabel}</div></td>
                             <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{item.organization ?? '-'}</td>
                           </tr>
                         );
@@ -334,7 +334,7 @@ export const AdminLogsPage = () => {
                   </table>
                 </div>
 
-                <div className="flex flex-col gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-gray-500">
                     {formatCount(pageStart)}-{formatCount(pageEnd)} / {formatCount(totalFetchedActivities)}건 표시 · {currentPage}/{totalPages}페이지
                   </p>
@@ -369,10 +369,10 @@ export const AdminLogsPage = () => {
             )}
           </div>
 
-          <aside className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <aside className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">선택 상세</h3>
+                <h3 className="text-lg font-semibold text-white">선택 상세</h3>
                 <p className="mt-1 text-sm text-gray-500">목록에서 선택한 활동의 세부 정보를 확인합니다.</p>
               </div>
             </div>
@@ -380,7 +380,7 @@ export const AdminLogsPage = () => {
             {selectedActivity ? (
               <DetailPanel item={selectedActivity} />
             ) : (
-              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-400">
+              <div className="rounded-xl border border-dashed border-border bg-[#1E1E2A] px-4 py-10 text-center text-sm text-gray-400">
                 왼쪽 목록에서 활동을 선택하면 여기에서 상세 정보를 볼 수 있습니다.
               </div>
             )}
@@ -402,14 +402,14 @@ const StatCard = ({
   value: string;
   tone: string;
 }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
+  <div className="bg-card rounded-xl border border-border p-5">
     <div className="flex items-center gap-4">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
         <Icon size={22} className="text-white" />
       </div>
       <div className="min-w-0">
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-2xl font-bold text-white">{value}</p>
       </div>
     </div>
   </div>
@@ -429,7 +429,7 @@ const FilterChip = ({
     className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
       active
         ? 'bg-[#7952B3] text-white border-[#7952B3]'
-        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+        : 'bg-card text-gray-400 border-border hover:bg-[#2A2A35]'
     }`}
   >
     {label}
@@ -453,7 +453,7 @@ const PageButton = ({
     className={`min-w-9 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
       active
         ? 'border-[#7952B3] bg-[#7952B3] text-white'
-        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50'
+        : 'border-border bg-card text-gray-400 hover:bg-[#2A2A35] disabled:cursor-not-allowed disabled:opacity-50'
     }`}
   >
     {label}
@@ -478,7 +478,7 @@ const DetailPanel = ({ item }: { item: AdminActivityLogItem }) => {
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">설명</p>
-        <p className="mt-2 text-base font-semibold text-gray-900 leading-7">{item.description}</p>
+        <p className="mt-2 text-base font-semibold text-white leading-7">{item.description}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-1">
@@ -494,14 +494,14 @@ const DetailPanel = ({ item }: { item: AdminActivityLogItem }) => {
         {metadataEntries.length ? (
           <div className="mt-3 space-y-2">
             {metadataEntries.map(([key, value]) => (
-              <div key={key} className="rounded-lg bg-gray-50 px-3 py-2">
+              <div key={key} className="rounded-lg bg-[#1E1E2A] px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{key}</p>
-                <p className="mt-1 text-sm text-gray-700 break-words">{String(value)}</p>
+                <p className="mt-1 text-sm text-gray-300 break-words">{String(value)}</p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="mt-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+          <div className="mt-3 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-gray-400">
             표시할 메타데이터가 없습니다.
           </div>
         )}
@@ -519,8 +519,8 @@ const DetailField = ({
   value: string;
   mono?: boolean;
 }) => (
-  <div className="rounded-lg bg-gray-50 px-3 py-2">
+  <div className="rounded-lg bg-[#1E1E2A] px-3 py-2">
     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
-    <p className={`mt-1 text-sm text-gray-700 break-words ${mono ? 'font-mono text-xs' : ''}`}>{value}</p>
+    <p className={`mt-1 text-sm text-gray-300 break-words ${mono ? 'font-mono text-xs' : ''}`}>{value}</p>
   </div>
 );

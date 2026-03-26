@@ -60,13 +60,13 @@ export const SignUpPage = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-8">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UserPlus className="text-green-600" size={32} />
+      <div className="min-h-screen flex items-center justify-center bg-base p-8">
+        <div className="w-full max-w-md bg-card border border-border rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UserPlus className="text-green-400" size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">가입 완료</h2>
-          <p className="text-gray-500 mb-6">
+          <h2 className="text-2xl font-bold text-white mb-2">가입 완료</h2>
+          <p className="text-gray-400 mb-6">
             관리자의 승인 후 서비스를 이용할 수 있습니다.<br />
             승인 전까지 대기 화면이 표시됩니다.
           </p>
@@ -79,46 +79,34 @@ export const SignUpPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-sidebar-bg flex-col justify-between p-12">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#7952B3] rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">PI</span>
-            </div>
-            <span className="text-white text-xl font-semibold">Management System</span>
+    <div className="min-h-screen flex bg-base">
+      {/* Left Panel - Minimal branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-sidebar-bg flex-col items-center justify-center p-12">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-[#7952B3] rounded-xl flex items-center justify-center">
+            <span className="text-white font-bold text-2xl">PI</span>
           </div>
-        </div>
-        <div className="space-y-8">
-          <h1 className="text-4xl font-bold text-white leading-tight">
-            전사 업무 프로세스<br />
-            <span className="text-[#9B7ACC]">통합 관리 시스템</span>
-          </h1>
-          <p className="text-gray-400 text-lg">
-            계정을 등록하고 관리자 승인을 받은 후<br />
-            시스템을 이용하실 수 있습니다.
-          </p>
-        </div>
-        <div className="text-gray-600 text-sm">
-          © 2024 SK브로드밴드. All rights reserved.
+          <div>
+            <span className="text-white text-2xl font-bold block">SKB</span>
+            <span className="text-gray-400 text-sm">PI Management System</span>
+          </div>
         </div>
       </div>
 
       {/* Right Panel - Sign Up Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
+      <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
             <div className="w-10 h-10 bg-[#7952B3] rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl">PI</span>
             </div>
-            <span className="text-gray-900 text-xl font-semibold">Management System</span>
+            <span className="text-white text-xl font-semibold">SKB PI Management</span>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className="bg-card border border-border rounded-2xl p-8">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">회원가입</h2>
-              <p className="text-gray-500 mt-2">계정 정보를 입력하세요</p>
+              <h2 className="text-2xl font-bold text-white">회원가입</h2>
+              <p className="text-gray-400 mt-2">계정 정보를 입력하세요</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -169,7 +157,7 @@ export const SignUpPage = () => {
               />
 
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                <div className="p-3 bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-sm">
                   {error}
                 </div>
               )}
@@ -188,7 +176,7 @@ export const SignUpPage = () => {
 
           <p className="text-center text-gray-500 text-sm mt-6">
             이미 계정이 있으신가요?{' '}
-            <Link to="/login" className="text-[#7952B3] hover:underline font-medium">
+            <Link to="/login" className="text-[#9B7ACC] hover:underline font-medium">
               로그인
             </Link>
           </p>
