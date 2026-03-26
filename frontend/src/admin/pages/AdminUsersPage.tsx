@@ -282,53 +282,11 @@ export const AdminUsersPage = () => {
                   <th className="px-4 py-3 text-left font-medium text-gray-600">가입일</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">액션</th>
                 </tr>
-              ) : (
-                users.map((u) => (
-                  <tr key={u.id} className="border-b border-border hover:bg-[#2A2A35]">
-                    <td className="px-4 py-3 font-mono text-gray-300">{u.employee_id}</td>
-                    <td className="px-4 py-3 text-white">{u.name}</td>
-                    <td className="px-4 py-3 text-gray-400">{u.organization}</td>
-                    <td className="px-4 py-3">
-                      {u.role === 'none' ? (
-                        <Badge variant="warning" size="sm">대기</Badge>
-                      ) : (
-                        <select
-                          value={u.role}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          className="text-xs border border-border rounded bg-[#1E1E2A] text-gray-300 px-2 py-1"
-                        >
-                          {ROLE_OPTIONS.map((r) => (
-                            <option key={r} value={r}>{roleLabel(r)}</option>
-                          ))}
-                        </select>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={u.is_active ? 'success' : 'danger'} size="sm">
-                        {u.is_active ? '활성' : '비활성'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {new Date(u.created_at).toLocaleDateString('ko-KR')}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        {u.role === 'none' && (
-                          <button
-                            onClick={() => handleRoleChange(u.id, 'viewer')}
-                            className="text-xs px-2 py-1 bg-[#7952B3] text-white rounded hover:bg-[#6a46a0] transition-colors"
-                          >
-                            승인
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleToggleActive(u.id, u.is_active)}
-                          className="text-xs px-2 py-1 border border-border rounded hover:bg-[#2A2A35] text-gray-300 transition-colors"
-                        >
-                          {u.is_active ? '비활성화' : '활성화'}
-                        </button>
-                      </div>
-                    </td>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-gray-500">로딩 중...</td>
                   </tr>
                 ) : (
                   users.map((user) => {
