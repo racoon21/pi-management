@@ -8,11 +8,9 @@ import { useModalStore } from '../../stores/modalStore';
 import { useAuthStore } from '../../stores/authStore';
 import { taskApi } from '../../api';
 import { permissions } from '../../utils/permissions';
-import type { TaskLevel, TaskHistory, OrganizationType } from '../../types/task';
-import { Edit, Save, X, User, Building, Tag, Calendar, Sparkles, Clock, Plus, Trash2 } from 'lucide-react';
+import type { TaskLevel, TaskHistory, OrganizationType, TaskGraphItem } from '../../types/task';
+import { Edit, Save, X, User, Users, Building, Tag, Calendar, Sparkles, Clock, Plus, Trash2, Link2, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../stores/authStore';
-import { permissions } from '../../utils/permissions';
 
 const ORG_TYPES: OrganizationType[] = ['본부', '실', '담당', '팀'];
 
