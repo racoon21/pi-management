@@ -6,9 +6,11 @@ import { Badge } from '../shared/Badge';
 import { useTaskStore } from '../../stores/taskStore';
 import { useModalStore } from '../../stores/modalStore';
 import { taskApi } from '../../api';
-import type { TaskLevel, TaskHistory, OrganizationType } from '../../types/task';
-import { Edit, Save, X, User, Building, Tag, Calendar, Sparkles, Clock } from 'lucide-react';
+import type { TaskLevel, TaskHistory, TaskGraphItem, OrganizationType } from '../../types/task';
+import { Edit, Save, X, User, Users, Building, Tag, Calendar, Sparkles, Clock, Link2, Search, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../../stores/authStore';
+import { permissions } from '../../utils/permissions';
 
 const ORG_TYPES: OrganizationType[] = ['본부', '실', '담당', '팀'];
 
@@ -21,8 +23,11 @@ const NEXT_LEVEL: Record<TaskLevel, TaskLevel | null> = {
 };
 
 export const TaskFormModal = () => {
-  const { isOpen, type, data, closeModal } = useModalStore();
-  const { tasks, createTask, updateTask, selectedTask } = useTaskStore();
+  const { isOpen, type, data, closeModal, openModal } = useModalStore();
+  const { tasks, createTask, updateTask, deleteTask, selectedTask } = useTaskStore();
+  const { user } = useAuthStore();
+  const canEdit = permissions.canEditTask(user);
+  const canDelete = permissions.canDeleteTask(user);
   const [, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<'detail' | 'history'>('detail');
@@ -34,6 +39,7 @@ export const TaskFormModal = () => {
     team: '',
     manager_name: '',
     manager_id: '',
+    related_team: '',
     keywords: '',
     is_ai_utilized: false,
   });
@@ -45,6 +51,46 @@ export const TaskFormModal = () => {
 
   const [histories, setHistories] = useState<TaskHistory[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // 연결 업무 상태
+  const [relations, setRelations] = useState<TaskGraphItem[]>([]);
+  const [relationSearch, setRelationSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<TaskGraphItem[]>([]);
+  const [_isSearching, setIsSearching] = useState(false);
+
+  // 연결 업무 로드
+  useEffect(() => {
+    if (isOpen && type === 'edit' && data?.taskId) {
+      taskApi.getRelations(data.taskId)
+        .then(setRelations)
+        .catch(() => setRelations([]));
+    } else {
+      setRelations([]);
+    }
+  }, [isOpen, type, data?.taskId]);
+
+  // 연결 업무 검색 (디바운스)
+  useEffect(() => {
+    if (!relationSearch.trim() || relationSearch.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await taskApi.searchTasks(relationSearch);
+        // 자기 자신과 이미 연결된 것 제외
+        const currentId = data?.taskId;
+        const relatedIds = new Set(relations.map(r => r.id));
+        setSearchResults(results.filter(r => r.id !== currentId && !relatedIds.has(r.id)).slice(0, 5));
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [relationSearch, data?.taskId, relations]);
 
   useEffect(() => {
     if (isOpen && type === 'edit' && data?.taskId && activeTab === 'history') {
@@ -61,6 +107,8 @@ export const TaskFormModal = () => {
   const isNewL1 = newLevel === 'L1';
   // [IMP-06] L4일 때만 AI 체크박스 표시
   const isNewL4 = newLevel === 'L4';
+  // L3/L4만 유관팀 필드 표시
+  const showRelatedTeam = newLevel === 'L3' || newLevel === 'L4';
 
   useEffect(() => {
     if (isOpen && type === 'create' && parentTask) {
@@ -71,6 +119,7 @@ export const TaskFormModal = () => {
         team: parentTask.team || '',
         manager_name: '',
         manager_id: '',
+        related_team: '',
         keywords: parentTask.keywords?.join(', ') || '',
         is_ai_utilized: false,
       });
@@ -83,6 +132,7 @@ export const TaskFormModal = () => {
         team: selectedTask.team || '',
         manager_name: selectedTask.manager_name || '',
         manager_id: selectedTask.manager_id || '',
+        related_team: selectedTask.related_team?.join(', ') || '',
         keywords: selectedTask.keywords?.join(', ') || '',
         is_ai_utilized: selectedTask.is_ai_utilized,
       });
@@ -96,6 +146,7 @@ export const TaskFormModal = () => {
         team: '',
         manager_name: '',
         manager_id: '',
+        related_team: '',
         keywords: '',
         is_ai_utilized: false,
       });
@@ -133,6 +184,7 @@ export const TaskFormModal = () => {
           team: formData.team || null,
           manager_name: formData.manager_name || null,
           manager_id: formData.manager_id || null,
+          related_team: showRelatedTeam ? formData.related_team.split(',').map(t => t.trim()).filter(Boolean) : null,
           keywords: formData.keywords.split(',').map(k => k.trim()).filter(Boolean),
           // [IMP-06] L4만 AI 활용 설정 가능
           is_ai_utilized: isNewL4 ? formData.is_ai_utilized : false,
@@ -148,6 +200,7 @@ export const TaskFormModal = () => {
           team: formData.team || null,
           manager_name: formData.manager_name || null,
           manager_id: formData.manager_id || null,
+          related_team: formData.related_team.split(',').map(t => t.trim()).filter(Boolean),
           keywords: formData.keywords.split(',').map(k => k.trim()).filter(Boolean),
           is_ai_utilized: formData.is_ai_utilized,
         });
@@ -168,6 +221,31 @@ export const TaskFormModal = () => {
     closeModal();
   };
 
+  const handleAddRelation = async (relatedId: string) => {
+    if (!data?.taskId) return;
+    try {
+      await taskApi.addRelation(data.taskId, relatedId);
+      const updated = await taskApi.getRelations(data.taskId);
+      setRelations(updated);
+      setRelationSearch('');
+      setSearchResults([]);
+      toast.success('연결 업무가 추가되었습니다');
+    } catch {
+      toast.error('연결 추가에 실패했습니다');
+    }
+  };
+
+  const handleRemoveRelation = async (relatedId: string) => {
+    if (!data?.taskId) return;
+    try {
+      await taskApi.removeRelation(data.taskId, relatedId);
+      setRelations(prev => prev.filter(r => r.id !== relatedId));
+      toast.success('연결이 해제되었습니다');
+    } catch {
+      toast.error('연결 해제에 실패했습니다');
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -179,9 +257,9 @@ export const TaskFormModal = () => {
       {isCreateMode && (
         <form onSubmit={handleSubmit} className="space-y-4">
           {parentTask && (
-            <div className="p-3 bg-gray-50 rounded-lg mb-4">
-              <p className="text-sm text-gray-500">
-                상위 업무: <span className="font-medium text-gray-900">{parentTask.name}</span>
+            <div className="p-3 bg-[#1E1E2A] rounded-lg mb-4">
+              <p className="text-sm text-gray-400">
+                상위 업무: <span className="font-medium text-white">{parentTask.name}</span>
               </p>
               <p className="text-xs text-gray-400 mt-1">
                 새 업무 레벨: {NEXT_LEVEL[parentTask.level as TaskLevel]}
@@ -204,11 +282,11 @@ export const TaskFormModal = () => {
 
           {/* [IMP-04] 조직 단위 드롭다운 */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500">조직 단위</label>
+            <label className="text-xs font-medium text-gray-400">조직 단위</label>
             <select
               value={formData.organization_type}
               onChange={(e) => setFormData({ ...formData, organization_type: e.target.value })}
-              className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7952B3]"
+              className="px-3 py-2 bg-[#1E1E2A] border border-border rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-0 focus:border-white focus:border-2"
             >
               <option value="">선택 없음</option>
               {ORG_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -247,6 +325,15 @@ export const TaskFormModal = () => {
             />
           </div>
 
+          {showRelatedTeam && (
+            <Input
+              label="유관팀"
+              value={formData.related_team}
+              onChange={(e) => setFormData({ ...formData, related_team: e.target.value })}
+              placeholder="쉼표로 구분하여 입력 (예: 보안팀, QA팀)"
+            />
+          )}
+
           <Input
             label="키워드"
             value={formData.keywords}
@@ -262,9 +349,9 @@ export const TaskFormModal = () => {
                 id="ai_utilized_create"
                 checked={formData.is_ai_utilized}
                 onChange={(e) => setFormData({ ...formData, is_ai_utilized: e.target.checked })}
-                className="w-4 h-4 text-[#7952B3] border-gray-300 rounded focus:ring-[#7952B3]"
+                className="w-4 h-4 text-[#7952B3] border-border rounded focus:ring-[#7952B3]"
               />
-              <label htmlFor="ai_utilized_create" className="text-sm text-gray-700">
+              <label htmlFor="ai_utilized_create" className="text-sm text-gray-300">
                 AI 활용 업무
               </label>
             </div>
@@ -285,13 +372,13 @@ export const TaskFormModal = () => {
       {type === 'edit' && selectedTask && (
         <>
           {/* Tabs */}
-          <div className="flex border-b border-gray-200 mb-4 -mt-2">
+          <div className="flex border-b border-border mb-4 -mt-2">
             <button
               onClick={() => setActiveTab('detail')}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === 'detail'
                   ? 'text-[#7952B3] border-b-2 border-[#7952B3]'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-gray-400 hover:text-gray-300'
               }`}
             >
               상세 정보
@@ -301,7 +388,7 @@ export const TaskFormModal = () => {
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === 'history'
                   ? 'text-[#7952B3] border-b-2 border-[#7952B3]'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-gray-400 hover:text-gray-300'
               }`}
             >
               변경 이력 ({histories.length})
@@ -346,6 +433,15 @@ export const TaskFormModal = () => {
                     />
                   </div>
 
+                  {selectedTask && (selectedTask.level === 'L3' || selectedTask.level === 'L4') && (
+                    <Input
+                      label="유관팀"
+                      value={formData.related_team}
+                      onChange={(e) => setFormData({ ...formData, related_team: e.target.value })}
+                      placeholder="쉼표로 구분하여 입력 (예: 보안팀, QA팀)"
+                    />
+                  )}
+
                   <Input
                     label="키워드"
                     value={formData.keywords}
@@ -359,9 +455,9 @@ export const TaskFormModal = () => {
                       id="ai_utilized_edit"
                       checked={formData.is_ai_utilized}
                       onChange={(e) => setFormData({ ...formData, is_ai_utilized: e.target.checked })}
-                      className="w-4 h-4 text-[#7952B3] border-gray-300 rounded focus:ring-[#7952B3]"
+                      className="w-4 h-4 text-[#7952B3] border-border rounded focus:ring-[#7952B3]"
                     />
-                    <label htmlFor="ai_utilized_edit" className="text-sm text-gray-700">
+                    <label htmlFor="ai_utilized_edit" className="text-sm text-gray-300">
                       AI 활용 업무
                     </label>
                   </div>
@@ -398,30 +494,50 @@ export const TaskFormModal = () => {
 
                   {/* Info Items */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                       <Building size={18} className="text-gray-400" />
                       <div>
-                        <p className="text-xs text-gray-500">조직</p>
-                        <p className="text-sm font-medium text-gray-900">{selectedTask.organization}</p>
+                        <p className="text-xs text-gray-400">조직</p>
+                        <p className="text-sm font-medium text-white">{selectedTask.organization}</p>
                       </div>
                     </div>
 
                     {selectedTask.team && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                         <Building size={18} className="text-gray-400" />
                         <div>
-                          <p className="text-xs text-gray-500">팀</p>
-                          <p className="text-sm font-medium text-gray-900">{selectedTask.team}</p>
+                          <p className="text-xs text-gray-400">팀</p>
+                          <p className="text-sm font-medium text-white">{selectedTask.team}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedTask.level === 'L3' || selectedTask.level === 'L4') && (
+                      <div className="flex items-start gap-3 p-3 bg-[#1E1E2A] rounded-lg">
+                        <Users size={18} className="text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-xs text-gray-400 mb-2">유관팀</p>
+                          {selectedTask.related_team && selectedTask.related_team.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {selectedTask.related_team.map((team, index) => (
+                                <Badge key={index} variant="default" size="sm">
+                                  {team}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">-</p>
+                          )}
                         </div>
                       </div>
                     )}
 
                     {selectedTask.manager_name && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                         <User size={18} className="text-gray-400" />
                         <div>
-                          <p className="text-xs text-gray-500">담당자</p>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-xs text-gray-400">담당자</p>
+                          <p className="text-sm font-medium text-white">
                             {selectedTask.manager_name} ({selectedTask.manager_id})
                           </p>
                         </div>
@@ -429,10 +545,10 @@ export const TaskFormModal = () => {
                     )}
 
                     {selectedTask.keywords && selectedTask.keywords.length > 0 && (
-                      <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-start gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                         <Tag size={18} className="text-gray-400 mt-0.5" />
                         <div>
-                          <p className="text-xs text-gray-500 mb-2">키워드</p>
+                          <p className="text-xs text-gray-400 mb-2">키워드</p>
                           <div className="flex flex-wrap gap-1">
                             {selectedTask.keywords.map((keyword, index) => (
                               <Badge key={index} variant="default" size="sm">
@@ -444,11 +560,68 @@ export const TaskFormModal = () => {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    {/* 연결 업무 */}
+                    <div className="flex items-start gap-3 p-3 bg-[#1E1E2A] rounded-lg">
+                      <Link2 size={18} className="text-gray-400 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-400 mb-2">연결 업무</p>
+                        {relations.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {relations.map((rel) => (
+                              <span
+                                key={rel.id}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#2A2A35] rounded text-xs text-gray-300"
+                              >
+                                <span className="text-[10px] text-gray-500">{rel.level}</span>
+                                <span className="truncate max-w-[120px]">{rel.name}</span>
+                                <button
+                                  onClick={() => handleRemoveRelation(rel.id)}
+                                  className="text-gray-500 hover:text-red-400 ml-0.5"
+                                >
+                                  <X size={10} />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">-</p>
+                        )}
+                        {/* 연결 업무 추가 검색 */}
+                        <div className="relative mt-2">
+                          <div className="flex items-center gap-1">
+                            <Search size={14} className="text-gray-500" />
+                            <input
+                              type="text"
+                              value={relationSearch}
+                              onChange={(e) => setRelationSearch(e.target.value)}
+                              placeholder="업무명으로 검색하여 연결..."
+                              className="flex-1 bg-transparent text-xs text-gray-300 placeholder-gray-600 outline-none"
+                            />
+                          </div>
+                          {searchResults.length > 0 && (
+                            <div className="absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-xl z-10 max-h-[150px] overflow-y-auto">
+                              {searchResults.map((result) => (
+                                <button
+                                  key={result.id}
+                                  onClick={() => handleAddRelation(result.id)}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-[#2A2A35] transition-colors flex items-center gap-2"
+                                >
+                                  <span className="text-[10px] text-gray-500 shrink-0">{result.level}</span>
+                                  <span className="text-gray-300 truncate">{result.name}</span>
+                                  <span className="text-[10px] text-gray-600 shrink-0">{result.organization}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                       <Calendar size={18} className="text-gray-400" />
                       <div>
-                        <p className="text-xs text-gray-500">최종 수정일</p>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-xs text-gray-400">최종 수정일</p>
+                        <p className="text-sm font-medium text-white">
                           {new Date(selectedTask.updated_at).toLocaleDateString('ko-KR')}
                         </p>
                       </div>
@@ -462,15 +635,59 @@ export const TaskFormModal = () => {
                     </p>
                   </div>
 
-                  {/* Edit Button */}
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    icon={Edit}
-                    onClick={() => setIsEditing(true)}
-                  >
-                    수정하기
-                  </Button>
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2">
+                    {canEdit && (
+                      <Button
+                        variant="primary"
+                        className="w-full"
+                        icon={Edit}
+                        onClick={() => setIsEditing(true)}
+                      >
+                        수정하기
+                      </Button>
+                    )}
+
+                    {canEdit && NEXT_LEVEL[selectedTask.level] !== null && (
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        icon={Plus}
+                        onClick={() => {
+                          closeModal();
+                          setTimeout(() => {
+                            openModal({
+                              type: 'create',
+                              title: '하위 업무 추가',
+                              data: { parentId: selectedTask.id },
+                            });
+                          }, 200);
+                        }}
+                      >
+                        하위 업무 추가
+                      </Button>
+                    )}
+
+                    {canDelete && selectedTask.level !== 'Root' && (
+                      <Button
+                        variant="danger"
+                        className="w-full"
+                        icon={Trash2}
+                        onClick={async () => {
+                          if (!confirm(`"${selectedTask.name}" 태스크를 삭제하시겠습니까?`)) return;
+                          try {
+                            await deleteTask(selectedTask.id);
+                            toast.success('삭제되었습니다');
+                            closeModal();
+                          } catch {
+                            toast.error('삭제에 실패했습니다');
+                          }
+                        }}
+                      >
+                        삭제
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </>
@@ -479,11 +696,11 @@ export const TaskFormModal = () => {
           {activeTab === 'history' && (
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {isLoadingHistory ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-400">
                   로딩 중...
                 </div>
               ) : histories.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-400">
                   변경 이력이 없습니다
                 </div>
               ) : (
@@ -491,7 +708,7 @@ export const TaskFormModal = () => {
                   <div
                     key={history.id}
                     className={`p-4 rounded-lg border ${
-                      index === 0 ? 'border-[#7952B3]/30 bg-[#7952B3]/10' : 'border-gray-200 bg-white'
+                      index === 0 ? 'border-[#7952B3]/30 bg-[#7952B3]/10' : 'border-border bg-card'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -506,9 +723,9 @@ export const TaskFormModal = () => {
                       >
                         {history.change_type === 'CREATE' ? '생성' : history.change_type === 'DELETE' ? '삭제' : '수정'}
                       </Badge>
-                      <span className="text-xs text-gray-500">v{history.version}</span>
+                      <span className="text-xs text-gray-400">v{history.version}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
                       <Clock size={12} />
                       {new Date(history.changed_at).toLocaleString('ko-KR')}
                     </div>

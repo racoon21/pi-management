@@ -13,6 +13,7 @@ export interface TaskGraphItem {
   manager_id: string | null;
   keywords: string[];
   is_ai_utilized: boolean;
+  related_team: string[] | null;
 }
 
 export interface TaskDetail extends TaskGraphItem {
@@ -42,6 +43,7 @@ export interface TaskCreate {
   team?: string;
   manager_name?: string;
   manager_id?: string;
+  related_team?: string[] | null;
   keywords?: string[];
   is_ai_utilized?: boolean;
 }
@@ -53,8 +55,16 @@ export interface TaskUpdate {
   team?: string;
   manager_name?: string;
   manager_id?: string;
+  related_team?: string[] | null;
   keywords?: string[];
   is_ai_utilized?: boolean;
+}
+
+export interface TaskRelationItem {
+  id: string;
+  name: string;
+  level: TaskLevel;
+  organization: string;
 }
 
 export interface User {

@@ -6,11 +6,14 @@ class ExcelRow(BaseModel):
     l2: str
     l3: str
     l4: str
+    l3_related_team: str = ""
+    l4_related_team: str = ""
 
 
 class HierarchyNode(BaseModel):
     name: str
     level: str
+    related_team: list[str] | None = None
     children: list["HierarchyNode"] = []
 
 

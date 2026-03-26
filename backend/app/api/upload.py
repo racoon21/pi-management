@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from fastapi import APIRouter, HTTPException, UploadFile, File, status
 
 from app.api.deps import DbSession, EditorUser
@@ -9,7 +11,26 @@ from app.core.cache import task_cache
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 ALLOWED_EXTENSIONS = {".xlsx", ".xls"}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+CHUNK_SIZE = 1024 * 1024  # 1MB
+
+
+async def _read_file_chunked(file: UploadFile) -> bytes:
+    """Read uploaded file in 1MB chunks, enforcing MAX_FILE_SIZE."""
+    buf = BytesIO()
+    total = 0
+    while True:
+        chunk = await file.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="파일 크기가 100MB를 초과합니다.",
+            )
+        buf.write(chunk)
+    return buf.getvalue()
 
 
 def _validate_file(file: UploadFile) -> None:
@@ -33,12 +54,7 @@ async def upload_preview(
 ):
     """엑셀 파일을 파싱하여 미리보기 데이터를 반환합니다."""
     _validate_file(file)
-    file_bytes = await file.read()
-    if len(file_bytes) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="파일 크기가 10MB를 초과합니다.",
-        )
+    file_bytes = await _read_file_chunked(file)
 
     try:
         parsed = upload_service.parse_excel(file_bytes)
@@ -68,7 +84,7 @@ async def upload_diff(
 ):
     """엑셀 파일을 파싱하여 기존 DB와 비교한 diff를 반환합니다."""
     _validate_file(file)
-    file_bytes = await file.read()
+    file_bytes = await _read_file_chunked(file)
 
     try:
         parsed = upload_service.parse_excel(file_bytes)
@@ -92,7 +108,7 @@ async def upload_confirm(
 ):
     """엑셀 파일을 파싱하여 DB에 upsert합니다."""
     _validate_file(file)
-    file_bytes = await file.read()
+    file_bytes = await _read_file_chunked(file)
 
     try:
         parsed = upload_service.parse_excel(file_bytes)

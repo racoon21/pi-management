@@ -32,12 +32,26 @@ def parse_excel(file_bytes: bytes) -> ParsedExcel:
     # 헤더 행에서 L1~L4 컬럼 인덱스 찾기
     header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
     col_map: dict[str, int] = {}
+    related_team_cols: dict[str, int] = {}  # "L3" or "L4" -> column index
     for idx, cell_value in enumerate(header_row):
         if cell_value is None:
             continue
         val = str(cell_value).strip().upper()
         if val in ("L1", "L2", "L3", "L4"):
             col_map[val] = idx
+        # 유관팀 컬럼 감지
+        raw = str(cell_value).strip()
+        if "유관팀" in raw:
+            if "L3" in raw.upper():
+                related_team_cols["L3"] = idx
+            elif "L4" in raw.upper():
+                related_team_cols["L4"] = idx
+            else:
+                # Position-based: if right after L3 column, treat as L3; after L4 as L4
+                if "L3" in col_map and idx == col_map["L3"] + 1:
+                    related_team_cols["L3"] = idx
+                elif "L4" in col_map and idx == col_map["L4"] + 1:
+                    related_team_cols["L4"] = idx
 
     if not all(k in col_map for k in ("L1", "L2", "L3", "L4")):
         raise ValueError(
@@ -55,12 +69,24 @@ def parse_excel(file_bytes: bytes) -> ParsedExcel:
         if not l4 or not str(l4).strip():
             continue
 
+        l3_rt = ""
+        if "L3" in related_team_cols and related_team_cols["L3"] < len(row):
+            v = row[related_team_cols["L3"]]
+            l3_rt = str(v).strip() if v else ""
+
+        l4_rt = ""
+        if "L4" in related_team_cols and related_team_cols["L4"] < len(row):
+            v = row[related_team_cols["L4"]]
+            l4_rt = str(v).strip() if v else ""
+
         rows.append(
             ExcelRow(
                 l1=str(l1).strip() if l1 else "",
                 l2=str(l2).strip() if l2 else "",
                 l3=str(l3).strip() if l3 else "",
                 l4=str(l4).strip() if l4 else "",
+                l3_related_team=l3_rt,
+                l4_related_team=l4_rt,
             )
         )
 
@@ -68,9 +94,20 @@ def parse_excel(file_bytes: bytes) -> ParsedExcel:
     return ParsedExcel(rows=rows)
 
 
+def _parse_related_team(value: str) -> list[str] | None:
+    """Parse comma-separated related_team string into a list."""
+    if not value:
+        return None
+    teams = [t.strip() for t in value.split(",") if t.strip()]
+    return teams if teams else None
+
+
 def build_hierarchy(parsed: ParsedExcel) -> list[HierarchyNode]:
     """파싱된 데이터를 계층 트리로 변환."""
-    tree: dict[str, dict] = {}  # l1 -> {name, children: {l2 -> ...}}
+    # l1 -> { l2 -> { l3 -> [ (l4_name, l4_related_team) ] } }
+    tree: dict[str, dict] = {}
+    # Track related_team per L3 node: (l1, l2, l3) -> related_team str
+    l3_rt_map: dict[tuple[str, str, str], str] = {}
 
     for row in parsed.rows:
         if row.l1 not in tree:
@@ -83,10 +120,15 @@ def build_hierarchy(parsed: ParsedExcel) -> list[HierarchyNode]:
 
         if row.l3 not in l3_map:
             l3_map[row.l3] = []
-        l4_list: list[str] = l3_map[row.l3]
+        l4_list: list[tuple[str, str]] = l3_map[row.l3]
 
-        if row.l4 not in l4_list:
-            l4_list.append(row.l4)
+        # Store L3 related_team (first non-empty wins)
+        l3_key = (row.l1, row.l2, row.l3)
+        if l3_key not in l3_rt_map and row.l3_related_team:
+            l3_rt_map[l3_key] = row.l3_related_team
+
+        if not any(item[0] == row.l4 for item in l4_list):
+            l4_list.append((row.l4, row.l4_related_team))
 
     # dict → HierarchyNode 트리
     result: list[HierarchyNode] = []
@@ -95,8 +137,19 @@ def build_hierarchy(parsed: ParsedExcel) -> list[HierarchyNode]:
         for l2_name, l3_map in l2_map.items():
             l3_nodes: list[HierarchyNode] = []
             for l3_name, l4_list in l3_map.items():
-                l4_nodes = [HierarchyNode(name=n, level="L4") for n in l4_list]
-                l3_nodes.append(HierarchyNode(name=l3_name, level="L3", children=l4_nodes))
+                l4_nodes = [
+                    HierarchyNode(
+                        name=n, level="L4",
+                        related_team=_parse_related_team(rt),
+                    )
+                    for n, rt in l4_list
+                ]
+                l3_rt = l3_rt_map.get((l1_name, l2_name, l3_name), "")
+                l3_nodes.append(HierarchyNode(
+                    name=l3_name, level="L3",
+                    related_team=_parse_related_team(l3_rt),
+                    children=l4_nodes,
+                ))
             l2_nodes.append(HierarchyNode(name=l2_name, level="L2", children=l3_nodes))
         result.append(HierarchyNode(name=l1_name, level="L1", children=l2_nodes))
 
@@ -219,6 +272,7 @@ async def upsert_tasks(
 
     def _lookup_or_new(
         parent: Task, level: str, name: str, organization: str,
+        related_team: list[str] | None = None,
     ) -> Task:
         nonlocal created, skipped
         key = (parent.id, _normalize_name(name))
@@ -229,6 +283,7 @@ async def upsert_tasks(
         task = Task(
             parent_id=parent.id, level=level, name=name,
             organization=organization,
+            related_team=related_team,
             created_by=user_id, updated_by=user_id,
         )
         new_tasks.append(task)
@@ -257,7 +312,10 @@ async def upsert_tasks(
     l3_map: list[tuple[Task, HierarchyNode, str]] = []
     for l2_task, l2_node, org in l2_map:
         for l3_node in l2_node.children:
-            l3_task = _lookup_or_new(l2_task, "L3", l3_node.name, org)
+            l3_task = _lookup_or_new(
+                l2_task, "L3", l3_node.name, org,
+                related_team=l3_node.related_team,
+            )
             l3_map.append((l3_task, l3_node, org))
 
     await _flush_new(db, new_tasks, index)
@@ -265,7 +323,10 @@ async def upsert_tasks(
     # L4 수집
     for l3_task, l3_node, org in l3_map:
         for l4_node in l3_node.children:
-            _lookup_or_new(l3_task, "L4", l4_node.name, org)
+            _lookup_or_new(
+                l3_task, "L4", l4_node.name, org,
+                related_team=l4_node.related_team,
+            )
 
     await _flush_new(db, new_tasks, index)
 

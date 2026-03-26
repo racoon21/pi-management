@@ -16,6 +16,7 @@ interface TaskCreateRequest {
   team: string;
   manager_name: string;
   manager_id: string;
+  related_team?: string[] | null;
   keywords: string[];
   is_ai_utilized: boolean;
 }
@@ -27,6 +28,7 @@ interface TaskUpdateRequest {
   team?: string;
   manager_name?: string;
   manager_id?: string;
+  related_team?: string[] | null;
   keywords?: string[];
   is_ai_utilized?: boolean;
 }
@@ -67,5 +69,25 @@ export const taskApi = {
   /** [IMP-07] 하위 노드 조회 (cascade 삭제 확인용) */
   getDescendants: async (taskId: string): Promise<TaskGraphItem[]> => {
     return apiClient.get<TaskGraphItem[]>(`/tasks/${taskId}/descendants`);
+  },
+
+  /** 연결 업무 조회 */
+  getRelations: async (taskId: string): Promise<TaskGraphItem[]> => {
+    return apiClient.get<TaskGraphItem[]>(`/tasks/${taskId}/relations`);
+  },
+
+  /** 연결 업무 추가 */
+  addRelation: async (taskId: string, relatedTaskId: string): Promise<boolean> => {
+    return apiClient.post<boolean>(`/tasks/${taskId}/relations`, { related_task_id: relatedTaskId });
+  },
+
+  /** 연결 업무 삭제 */
+  removeRelation: async (taskId: string, relatedId: string): Promise<boolean> => {
+    return apiClient.delete<boolean>(`/tasks/${taskId}/relations/${relatedId}`);
+  },
+
+  /** 태스크 검색 */
+  searchTasks: async (query: string): Promise<TaskGraphItem[]> => {
+    return apiClient.get<TaskGraphItem[]>(`/tasks/search/query?q=${encodeURIComponent(query)}`);
   },
 };

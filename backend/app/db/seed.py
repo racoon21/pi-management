@@ -33,6 +33,16 @@ MANAGERS = [
     {"name": "정민우", "id": "EMP005"},
 ]
 
+RELATED_TEAMS = [
+    ["보안팀", "QA팀"],
+    ["인프라운영팀", "DX팀"],
+    ["클라우드팀", "AI플랫폼팀"],
+    ["고객지원팀"],
+    ["미디어팀", "B2B팀"],
+    ["IDC팀"],
+    [],
+]
+
 
 async def seed_database():
     async with engine.begin() as conn:
@@ -150,6 +160,7 @@ async def seed_database():
                         team=org["team"],
                         manager_name=manager["name"],
                         manager_id=manager["id"],
+                        related_team=random.choice(RELATED_TEAMS) or None,
                         keywords=org["keywords"] + [l2_cat, l3_sub],
                         is_ai_utilized=random.random() > 0.5,
                         created_by=admin.id,
@@ -173,6 +184,7 @@ async def seed_database():
                             team=org["team"],
                             manager_name=manager["name"],
                             manager_id=manager["id"],
+                            related_team=random.choice(RELATED_TEAMS) or None,
                             keywords=org["keywords"] + [l2_cat, l3_sub, l4_name],
                             is_ai_utilized=random.random() > 0.4,
                             created_by=admin.id,
