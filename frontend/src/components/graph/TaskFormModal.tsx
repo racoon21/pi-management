@@ -5,9 +5,11 @@ import { Input } from '../shared/Input';
 import { Badge } from '../shared/Badge';
 import { useTaskStore } from '../../stores/taskStore';
 import { useModalStore } from '../../stores/modalStore';
+import { useAuthStore } from '../../stores/authStore';
 import { taskApi } from '../../api';
-import type { TaskLevel, TaskHistory, TaskGraphItem, OrganizationType } from '../../types/task';
-import { Edit, Save, X, User, Users, Building, Tag, Calendar, Sparkles, Clock, Link2, Search, Plus, Trash2 } from 'lucide-react';
+import { permissions } from '../../utils/permissions';
+import type { TaskLevel, TaskHistory, OrganizationType } from '../../types/task';
+import { Edit, Save, X, User, Building, Tag, Calendar, Sparkles, Clock, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../stores/authStore';
 import { permissions } from '../../utils/permissions';
@@ -636,11 +638,11 @@ export const TaskFormModal = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {canEdit && (
                       <Button
                         variant="primary"
-                        className="w-full"
+                        className="flex-1 min-w-[120px]"
                         icon={Edit}
                         onClick={() => setIsEditing(true)}
                       >
@@ -651,7 +653,7 @@ export const TaskFormModal = () => {
                     {canEdit && NEXT_LEVEL[selectedTask.level] !== null && (
                       <Button
                         variant="secondary"
-                        className="w-full"
+                        className="flex-1 min-w-[120px]"
                         icon={Plus}
                         onClick={() => {
                           closeModal();
@@ -667,27 +669,27 @@ export const TaskFormModal = () => {
                         하위 업무 추가
                       </Button>
                     )}
-
-                    {canDelete && selectedTask.level !== 'Root' && (
-                      <Button
-                        variant="danger"
-                        className="w-full"
-                        icon={Trash2}
-                        onClick={async () => {
-                          if (!confirm(`"${selectedTask.name}" 태스크를 삭제하시겠습니까?`)) return;
-                          try {
-                            await deleteTask(selectedTask.id);
-                            toast.success('삭제되었습니다');
-                            closeModal();
-                          } catch {
-                            toast.error('삭제에 실패했습니다');
-                          }
-                        }}
-                      >
-                        삭제
-                      </Button>
-                    )}
                   </div>
+
+                  {canDelete && selectedTask.level !== 'Root' && (
+                    <Button
+                      variant="danger"
+                      className="w-full"
+                      icon={Trash2}
+                      onClick={async () => {
+                        if (!confirm(`"${selectedTask.name}" 태스크를 삭제하시겠습니까?`)) return;
+                        try {
+                          await deleteTask(selectedTask.id);
+                          toast.success('삭제되었습니다');
+                          closeModal();
+                        } catch {
+                          toast.error('삭제에 실패했습니다');
+                        }
+                      }}
+                    >
+                      삭제
+                    </Button>
+                  )}
                 </div>
               )}
             </>

@@ -1,5 +1,4 @@
-﻿import { apiClient } from './client';
-import type { User } from '../types/task';
+import { apiClient, type ApiResult } from './client';
 
 export interface UserListItem {
   id: string;
@@ -34,13 +33,24 @@ export interface AdminDashboardSummary {
   recent_signups: UserListItem[];
 }
 
-export type AdminActivitySource = 'all' | 'task_history' | 'user_signup';
-export type AdminActivityAction = 'all' | 'TASK_CREATE' | 'TASK_UPDATE' | 'TASK_DELETE' | 'USER_REGISTERED';
+export type AdminActivitySource = 'all' | 'task_history' | 'user_signup' | 'admin_audit';
+export type AdminActivityAction =
+  | 'all'
+  | 'TASK_CREATE'
+  | 'TASK_UPDATE'
+  | 'TASK_DELETE'
+  | 'USER_REGISTERED'
+  | 'USER_APPROVED'
+  | 'USER_REJECTED'
+  | 'USER_ROLE_CHANGED'
+  | 'USER_ACTIVATED'
+  | 'USER_DEACTIVATED';
 
 export interface AdminActivitySourceCounts {
   total: number;
   task_history: number;
   user_signup: number;
+  admin_audit: number;
 }
 
 export interface AdminActivityActionCounts {
@@ -48,13 +58,27 @@ export interface AdminActivityActionCounts {
   task_update: number;
   task_delete: number;
   user_registered: number;
+  user_approved: number;
+  user_rejected: number;
+  user_role_changed: number;
+  user_activated: number;
+  user_deactivated: number;
 }
 
 export interface AdminActivityLogItem {
   id: string;
-  source: 'task_history' | 'user_signup';
+  source: 'task_history' | 'user_signup' | 'admin_audit';
   source_label: string;
-  action: 'TASK_CREATE' | 'TASK_UPDATE' | 'TASK_DELETE' | 'USER_REGISTERED';
+  action:
+    | 'TASK_CREATE'
+    | 'TASK_UPDATE'
+    | 'TASK_DELETE'
+    | 'USER_REGISTERED'
+    | 'USER_APPROVED'
+    | 'USER_REJECTED'
+    | 'USER_ROLE_CHANGED'
+    | 'USER_ACTIVATED'
+    | 'USER_DEACTIVATED';
   action_label: string;
   description: string;
   actor_name: string | null;
@@ -74,6 +98,21 @@ export interface AdminActivityFeed {
   filtered_count: number;
   activities: AdminActivityLogItem[];
 }
+
+export type AdminUserAction =
+  | 'USER_APPROVED'
+  | 'USER_REJECTED'
+  | 'USER_ROLE_CHANGED'
+  | 'USER_ACTIVATED'
+  | 'USER_DEACTIVATED';
+
+export interface AdminUserActionPayload {
+  user: UserListItem;
+  action: AdminUserAction;
+  audit_log_id: string | null;
+}
+
+export type AdminUserActionResult = ApiResult<AdminUserActionPayload>;
 
 export const adminApi = {
   getDashboardSummary: async (): Promise<AdminDashboardSummary> => {
@@ -107,11 +146,21 @@ export const adminApi = {
     return apiClient.get<UserListItem[]>('/admin/users/pending');
   },
 
-  updateRole: async (userId: string, role: string): Promise<User> => {
-    return apiClient.put<User>(`/admin/users/${userId}/role`, { role });
+  updateRole: async (userId: string, role: string): Promise<AdminUserActionResult> => {
+    return apiClient.putWithMeta<AdminUserActionPayload>(`/admin/users/${userId}/role`, { role });
   },
 
-  toggleActive: async (userId: string, isActive: boolean): Promise<User> => {
-    return apiClient.put<User>(`/admin/users/${userId}/active`, { is_active: isActive });
+  toggleActive: async (userId: string, isActive: boolean): Promise<AdminUserActionResult> => {
+    return apiClient.putWithMeta<AdminUserActionPayload>(`/admin/users/${userId}/active`, {
+      is_active: isActive,
+    });
+  },
+
+  approvePendingUser: async (userId: string, role: 'viewer' | 'editor' | 'admin'): Promise<AdminUserActionResult> => {
+    return apiClient.postWithMeta<AdminUserActionPayload>(`/admin/users/${userId}/approve`, { role });
+  },
+
+  rejectPendingUser: async (userId: string): Promise<AdminUserActionResult> => {
+    return apiClient.postWithMeta<AdminUserActionPayload>(`/admin/users/${userId}/reject`);
   },
 };
