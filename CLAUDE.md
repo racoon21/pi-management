@@ -815,11 +815,13 @@ npm run build    # tsc -b && vite build → dist/
 - [x] Docker Compose 개발 환경 (DB + Backend + Frontend)
 
 - [x] Admin 활동 로그 원천 연결 (task history + 계정 등록 통합 activity feed, 기본 조회 화면)
+- [x] Admin 대시보드 UI 고도화 (운영형 히어로, 파스텔 역할 분포, 운영 인사이트, 최근 활동 위젯, 활동 로그 상세 연계)
+- [x] Admin 사용자 감사 흐름 강화 (역할 변경/활성 토글/승인 처리 후 토스트 메시지, 관리자 감사 로그 저장, 활동 로그 상세 연계)
 
 ### 미구현 / 개선 필요
 
 - [ ] `/settings` 페이지: 설정 UI (현재 DashboardPage 별칭)
-- [ ] Admin 활동 로그 관리자 감사 로그 저장 및 추가 데이터 원천 확장
+- [ ] Admin 활동 로그 추가 데이터 원천 확장 및 고급 검색/분석
 - [ ] Redis 기반 토큰 블랙리스트 (현재 인메모리)
 - [ ] 노드 드래그 앤 드롭 계층 이동
 - [ ] 키워드/담당자 통합 검색
@@ -834,8 +836,8 @@ npm run build    # tsc -b && vite build → dist/
 | 1 | `feature/admin-dashboard/live-data` | Admin 대시보드 placeholder를 실제 운영 지표 화면으로 전환 | 사용자 수, pending 수, role 분포, 최근 가입/승인 요약 연동 | `frontend/src/admin/pages/AdminDashboardPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py` |
 | 2 | `feature/admin-logs/source-foundation` | 활동 로그의 데이터 원천과 API 구조 정의 | `task_histories` + `users.created_at` 기반 통합 activity feed, `/api/admin/logs/activities`, 기본 원천 필터/피드 화면 연결 | `backend/app/api/admin.py`, `backend/app/services/admin_activity_service.py`, `backend/app/schemas/user.py`, `frontend/src/api/adminApi.ts`, `frontend/src/admin/pages/AdminLogsPage.tsx` |
 | 3 | `feature/admin-logs/history-ui` | AdminLogsPage를 실제 조회 화면으로 전환 | 검색, action 필터, source 기준 전체 이벤트 집계, 결과 테이블, 선택 상세 패널, 최근 100건 페이지네이션 | `frontend/src/admin/pages/AdminLogsPage.tsx`, `frontend/src/api/adminApi.ts`, `backend/app/api/admin.py`, `backend/app/services/admin_activity_service.py`, `backend/app/schemas/user.py` |
-| 4 | `feature/admin-dashboard/chart-polish` | 대시보드 시각화 완성도 개선 | 카드 정렬, 차트, 최근 활동 위젯, loading/error/empty 상태 고도화 | AdminDashboard UI 전반 |
-| 5 | `feature/admin-users/audit-polish` | 사용자 관리와 감사 흐름 연결 강화 | 역할 변경/활성 토글/승인 처리 후 로그와 메시지 흐름 연결 | `AdminUsersPage`, `AdminRequestsPage`, 관련 admin API |
+| 4 | `feature/admin-dashboard/chart-polish` | Admin 대시보드 운영형 UI 고도화 | 운영형 히어로, 파스텔 역할 분포 도넛, 운영 인사이트, 최근 활동 위젯, 활동 로그 상세 연계 | `frontend/src/admin/pages/AdminDashboardPage.tsx`, `frontend/src/admin/pages/AdminLogsPage.tsx` |
+| 5 | `feature/admin-users/audit-polish` | 사용자 관리와 감사 흐름 강화 | 역할 변경/활성 토글/승인 처리 후 토스트 메시지, 관리자 감사 로그 저장, 활동 로그 상세 연계 | `frontend/src/admin/pages/AdminUsersPage.tsx`, `frontend/src/admin/pages/AdminRequestsPage.tsx`, `frontend/src/admin/pages/AdminLogsPage.tsx`, `frontend/src/api/adminApi.ts`, `frontend/src/api/client.ts`, `backend/app/api/admin.py`, `backend/app/services/admin_activity_service.py`, `backend/app/models/admin_audit_log.py` |
 
 ---
 
@@ -901,14 +903,14 @@ npm run build    # tsc -b && vite build → dist/
 - 로그인 페이지 기본 계정 힌트(admin/admin123) 제거
 - 현재 main 코드 확인 기준, 위 pending 관련 핵심 동작(`role="none"` 처리 분리, `/auth/me` 허용, 로그인 401 처리)은 이미 반영된 상태로 보이며 admin dashboard/live-data 작업과 직접 충돌 가능성은 낮음
 
-### 2026-03-20 - `feature/admin-dashboard/live-data` (PR open)
+### 2026-03-20 - `feature/admin-dashboard/live-data` (merged)
 
 - Backend `GET /api/admin/dashboard/summary` 추가: 전체/활성/비활성 사용자 수, 승인 대기 수, 최근 7일 가입 수, 역할 분포, 조직별 사용자 수, 최근 가입 사용자 목록 반환
 - Frontend `AdminDashboardPage` 실데이터 연동: 운영 요약 카드, 역할 분포, 조직별 사용자 수, 최근 가입 사용자 테이블, 새로고침/바로가기 액션 추가
 - `frontend/src/api/adminApi.ts`, `backend/app/schemas/user.py`, `backend/app/schemas/__init__.py` 확장으로 dashboard 응답 모델 연결
 - 검증 완료: frontend npm run build 성공, admin/admin123 로그인 후 /api/admin/dashboard/summary 200 응답 확인
 
-### 2026-03-23 - `feature/admin-logs/source-foundation` (PR open)
+### 2026-03-23 - `feature/admin-logs/source-foundation` (merged)
 
 - Backend `GET /api/admin/logs/activities` 추가: `task_histories`와 `users.created_at`를 통합한 activity feed 원천 데이터 제공, `source`/`limit` 필터 지원
 - Backend `admin_activity_service` 추가: 업무 변경(CREATE/UPDATE/DELETE)과 계정 등록 이벤트를 공통 응답 구조로 정리, source별 건수 집계 제공
@@ -917,7 +919,7 @@ npm run build    # tsc -b && vite build → dist/
 
 
 
-### 2026-03-23 - `feature/admin-logs/history-ui` (current)
+### 2026-03-23 - `feature/admin-logs/history-ui` (merged)
 
 - Frontend `AdminLogsPage` 고도화: 원천 필터에 더해 이벤트 타입 필터, 검색 입력, 결과 테이블, 선택 상세 패널, 최근 100건 페이지네이션 추가
 - Frontend 집계 표시 보정: 원천 필터에 따라 `전체 이벤트` 숫자가 해당 원천 총합으로 보이도록 조정, 목록 배지/조직 셀 줄바꿈 최소화
@@ -925,4 +927,24 @@ npm run build    # tsc -b && vite build → dist/
 - Backend `/api/admin/logs/activities` 확장: `action`/`query`/`limit` 필터, `action_counts`와 `filtered_count` 응답 추가, 기본 조회 limit 100으로 상향
 - `frontend/src/api/adminApi.ts` 와 `backend/app/schemas/user.py` 확장으로 history UI 전용 타입 연결
 - 검증 완료: `frontend npm run build` 성공, `admin/admin123` 로그인 후 logs endpoint 200 응답 확인, `source=task_history` + `action=TASK_UPDATE` + `query=admin` 조합 응답 확인
+
+### 2026-03-24 - `feature/admin-dashboard/chart-polish` (PR open)
+
+- Frontend `AdminDashboardPage` 고도화: 운영형 히어로 섹션, KPI 카드 레이아웃, 파스텔 역할 분포 도넛, 운영 인사이트 카드, 최근 활동 위젯 추가
+- Frontend 최근 활동 UX 개선: 대시보드 항목 클릭 시 `/admin/logs`로 이동하면서 해당 로그를 자동 선택하도록 연계
+- Frontend polish 보정: 역할 분포 라벨 한국어 복구, 인사이트의 오해 소지가 있던 대각선 화살표 제거
+- `AdminLogsPage` 연계 보완: location state 기반 선택 로그/페이지 동기화로 활동 로그 상세 진입 흐름 개선
+- 검증 완료: `frontend npm run build` 성공, 관리자 홈 화면 수동 확인으로 역할 분포 라벨/색상 및 최근 활동 상세 연계 동작 확인
+
+### 2026-03-24 - `feature/admin-users/audit-polish` (current)
+
+- Backend `admin_audit_logs` 모델과 관리자 감사 로그 저장 흐름 추가: 역할 변경, 계정 활성/비활성, 가입 승인/거절 처리 후 `/api/admin/logs/activities`의 `admin_audit` source로 조회 가능
+- Backend Admin API 확장: `/api/admin/users/{id}/approve`, `/api/admin/users/{id}/reject`, `role/active` 응답을 `action + audit_log_id + message` 구조로 표준화
+- Frontend `apiClient` / `adminApi` 확장: mutation 결과에서 message와 audit log id를 함께 받아 토스트와 후속 이동에 활용
+- Frontend `AdminUsersPage`, `AdminRequestsPage` 고도화: 역할 변경/활성 토글/승인/거절 후 성공 메시지 배너와 `활동 로그에서 확인` CTA 추가
+- Frontend `AdminLogsPage` 확장: `admin_audit` source, 승인/거절/역할 변경/활성/비활성 action 필터, 관리자 감사 통계 카드 추가
+- 검증 완료: 프론트/백엔드 로컬 QA 완료
+- 사용자 관리 화면에서 역할 변경, 계정 활성/비활성, 승인/거절 처리 후 토스트/성공 배너/`활동 로그에서 확인` CTA 동작 확인
+- 운영 요청 화면에서 승인/거절 처리 후 동일한 메시지/감사 로그 연계 흐름 확인
+- 활동 로그 화면에서 `admin_audit` 원천, 승인/거절/역할 변경/활성/비활성 action 필터, 관리자 감사 통계 카드 노출 확인
 

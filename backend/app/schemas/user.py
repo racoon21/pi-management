@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -93,6 +93,7 @@ class AdminActivitySourceCounts(BaseModel):
     total: int
     task_history: int
     user_signup: int
+    admin_audit: int
 
 
 class AdminActivityActionCounts(BaseModel):
@@ -100,13 +101,28 @@ class AdminActivityActionCounts(BaseModel):
     task_update: int
     task_delete: int
     user_registered: int
+    user_approved: int
+    user_rejected: int
+    user_role_changed: int
+    user_activated: int
+    user_deactivated: int
 
 
 class AdminActivityLogItem(BaseModel):
     id: str
-    source: Literal["task_history", "user_signup"]
+    source: Literal["task_history", "user_signup", "admin_audit"]
     source_label: str
-    action: Literal["TASK_CREATE", "TASK_UPDATE", "TASK_DELETE", "USER_REGISTERED"]
+    action: Literal[
+        "TASK_CREATE",
+        "TASK_UPDATE",
+        "TASK_DELETE",
+        "USER_REGISTERED",
+        "USER_APPROVED",
+        "USER_REJECTED",
+        "USER_ROLE_CHANGED",
+        "USER_ACTIVATED",
+        "USER_DEACTIVATED",
+    ]
     action_label: str
     description: str
     actor_name: str | None = None
@@ -125,3 +141,15 @@ class AdminActivityFeedResponse(BaseModel):
     action_counts: AdminActivityActionCounts
     filtered_count: int
     activities: list[AdminActivityLogItem]
+
+
+class AdminUserActionResponse(BaseModel):
+    user: UserListResponse
+    action: Literal[
+        "USER_APPROVED",
+        "USER_REJECTED",
+        "USER_ROLE_CHANGED",
+        "USER_ACTIVATED",
+        "USER_DEACTIVATED",
+    ]
+    audit_log_id: str | None = None
