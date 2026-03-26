@@ -5,9 +5,11 @@ import { Input } from '../shared/Input';
 import { Badge } from '../shared/Badge';
 import { useTaskStore } from '../../stores/taskStore';
 import { useModalStore } from '../../stores/modalStore';
+import { useAuthStore } from '../../stores/authStore';
 import { taskApi } from '../../api';
+import { permissions } from '../../utils/permissions';
 import type { TaskLevel, TaskHistory, OrganizationType } from '../../types/task';
-import { Edit, Save, X, User, Building, Tag, Calendar, Sparkles, Clock } from 'lucide-react';
+import { Edit, Save, X, User, Building, Tag, Calendar, Sparkles, Clock, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ORG_TYPES: OrganizationType[] = ['본부', '실', '담당', '팀'];
@@ -21,8 +23,11 @@ const NEXT_LEVEL: Record<TaskLevel, TaskLevel | null> = {
 };
 
 export const TaskFormModal = () => {
-  const { isOpen, type, data, closeModal } = useModalStore();
-  const { tasks, createTask, updateTask, selectedTask } = useTaskStore();
+  const { isOpen, type, data, closeModal, openModal } = useModalStore();
+  const { tasks, createTask, updateTask, deleteTask, selectedTask } = useTaskStore();
+  const { user } = useAuthStore();
+  const canEdit = permissions.canEditTask(user);
+  const canDelete = permissions.canDeleteTask(user);
   const [, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<'detail' | 'history'>('detail');
@@ -462,15 +467,59 @@ export const TaskFormModal = () => {
                     </p>
                   </div>
 
-                  {/* Edit Button */}
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    icon={Edit}
-                    onClick={() => setIsEditing(true)}
-                  >
-                    수정하기
-                  </Button>
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {canEdit && (
+                      <Button
+                        variant="primary"
+                        className="flex-1 min-w-[120px]"
+                        icon={Edit}
+                        onClick={() => setIsEditing(true)}
+                      >
+                        수정하기
+                      </Button>
+                    )}
+
+                    {canEdit && NEXT_LEVEL[selectedTask.level] !== null && (
+                      <Button
+                        variant="secondary"
+                        className="flex-1 min-w-[120px]"
+                        icon={Plus}
+                        onClick={() => {
+                          closeModal();
+                          setTimeout(() => {
+                            openModal({
+                              type: 'create',
+                              title: '하위 업무 추가',
+                              data: { parentId: selectedTask.id },
+                            });
+                          }, 200);
+                        }}
+                      >
+                        하위 업무 추가
+                      </Button>
+                    )}
+                  </div>
+
+                  {canDelete && selectedTask.level !== 'Root' && (
+                    <Button
+                      variant="danger"
+                      className="w-full"
+                      icon={Trash2}
+                      onClick={async () => {
+                        if (!confirm(`"${selectedTask.name}" 태스크를 삭제하시겠습니까?`)) return;
+                        try {
+                          await deleteTask(selectedTask.id);
+                          toast.success('삭제되었습니다');
+                          closeModal();
+                        } catch {
+                          toast.error('삭제에 실패했습니다');
+                        }
+                      }}
+                    >
+                      삭제
+                    </Button>
+                  )}
                 </div>
               )}
             </>
