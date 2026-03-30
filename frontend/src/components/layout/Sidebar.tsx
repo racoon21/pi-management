@@ -50,7 +50,7 @@ export const Sidebar = () => {
   useEffect(() => {
     if (!isAdmin) return;
     adminApi.getPendingUsers().then((users) => setPendingCount(users.length)).catch(() => {});
-  }, [isAdmin]);
+  }, [isAdmin, location.pathname]);
 
   const handleLogout = () => {
     logout();
