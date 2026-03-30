@@ -10,12 +10,14 @@ import {
   X,
   AlertCircle,
   ShieldAlert,
+  Download,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Header } from '../components/layout/Header';
 import { Button } from '../components/shared/Button';
 import { Badge } from '../components/shared/Badge';
 import { useAuthStore } from '../stores/authStore';
+import { useTaskStore } from '../stores/taskStore';
 import { permissions } from '../utils/permissions';
 import {
   uploadApi,
@@ -227,6 +229,17 @@ export const UploadPage = () => {
                 </>
               )}
             </div>
+            <div className="mt-4 text-center">
+              <a
+                href={uploadApi.templateUrl}
+                download
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-300 bg-[#2A2A35] hover:bg-[#353545] border border-border rounded-lg transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Download size={16} />
+                양식 다운로드 (조직_업무PI_양식_ver0.9.xlsx)
+              </a>
+            </div>
           </div>
         )}
 
@@ -251,6 +264,11 @@ export const UploadPage = () => {
             </div>
 
             {/* Preview table */}
+            {(() => {
+              const hasExtra = preview.rows.some(
+                (r) => r.organization_type || r.organization_name || r.manager_name || r.manager_id || r.keywords || r.is_ai_utilized
+              );
+              return (
             <div className="bg-card rounded-xl border border-border overflow-hidden mb-4">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -261,6 +279,16 @@ export const UploadPage = () => {
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">L2</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">L3</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">L4</th>
+                      {hasExtra && (
+                        <>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">조직단위</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">조직명</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">담당자</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">사번</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">키워드</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">AI활용</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -271,6 +299,16 @@ export const UploadPage = () => {
                         <td className="py-2.5 px-4 text-sm text-gray-300">{row.l2}</td>
                         <td className="py-2.5 px-4 text-sm text-gray-300">{row.l3}</td>
                         <td className="py-2.5 px-4 text-sm text-white font-medium">{row.l4}</td>
+                        {hasExtra && (
+                          <>
+                            <td className="py-2.5 px-4 text-sm text-gray-300">{row.organization_type}</td>
+                            <td className="py-2.5 px-4 text-sm text-gray-300">{row.organization_name}</td>
+                            <td className="py-2.5 px-4 text-sm text-gray-300">{row.manager_name}</td>
+                            <td className="py-2.5 px-4 text-sm text-gray-300">{row.manager_id}</td>
+                            <td className="py-2.5 px-4 text-sm text-gray-300">{row.keywords}</td>
+                            <td className="py-2.5 px-4 text-sm text-gray-300">{row.is_ai_utilized}</td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -282,6 +320,8 @@ export const UploadPage = () => {
                 </div>
               )}
             </div>
+              );
+            })()}
 
             {/* Actions */}
             <div className="flex items-center gap-3">
@@ -370,7 +410,7 @@ export const UploadPage = () => {
                   variant="primary"
                   icon={ArrowRight}
                   iconPosition="right"
-                  onClick={() => navigate('/graph')}
+                  onClick={() => { useTaskStore.getState().invalidateCache(); navigate('/graph'); }}
                 >
                   그래프 보기
                 </Button>

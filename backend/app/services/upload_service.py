@@ -18,79 +18,150 @@ from app.schemas.upload import (
     UpsertResult,
 )
 
+VALID_ORG_TYPES = ["본부", "실", "담당", "팀"]
+
+# 한글 헤더 → 필드명 매핑
+EXTRA_COL_MAP = {
+    "조직단위": "organization_type",
+    "조직명": "organization_name",
+    "담당자": "manager_name",
+    "사번": "manager_id",
+    "키워드": "keywords",
+    "AI활용": "is_ai_utilized",
+}
+
 
 @dataclass
 class ParsedExcel:
     rows: list[ExcelRow] = field(default_factory=list)
 
 
+@dataclass
+class L4Entry:
+    name: str
+    related_team: str = ""
+    organization_type: str = ""
+    organization_name: str = ""
+    manager_name: str = ""
+    manager_id: str = ""
+    keywords: str = ""
+    is_ai_utilized: str = ""
+
+
 def parse_excel(file_bytes: bytes) -> ParsedExcel:
-    """openpyxl로 엑셀 파싱. 헤더에서 L1~L4 컬럼 자동 감지."""
+    """openpyxl로 엑셀 파싱. 헤더에서 L1~L4 + 추가 컬럼 자동 감지."""
     wb = load_workbook(filename=BytesIO(file_bytes), read_only=True, data_only=True)
     ws = wb.active
 
-    # 헤더 행에서 L1~L4 컬럼 인덱스 찾기
+    # 헤더 행에서 컬럼 인덱스 찾기
     header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
     col_map: dict[str, int] = {}
-    related_team_cols: dict[str, int] = {}  # "L3" or "L4" -> column index
+    related_team_cols: dict[str, int] = {}
+    extra_cols: dict[str, int] = {}  # field_name -> column index
+
     for idx, cell_value in enumerate(header_row):
         if cell_value is None:
             continue
         val = str(cell_value).strip().upper()
+        raw = str(cell_value).strip()
+
         if val in ("L1", "L2", "L3", "L4"):
             col_map[val] = idx
         # 유관팀 컬럼 감지
-        raw = str(cell_value).strip()
         if "유관팀" in raw:
             if "L3" in raw.upper():
                 related_team_cols["L3"] = idx
             elif "L4" in raw.upper():
                 related_team_cols["L4"] = idx
             else:
-                # Position-based: if right after L3 column, treat as L3; after L4 as L4
                 if "L3" in col_map and idx == col_map["L3"] + 1:
                     related_team_cols["L3"] = idx
                 elif "L4" in col_map and idx == col_map["L4"] + 1:
                     related_team_cols["L4"] = idx
+        # 추가 컬럼 감지
+        if raw in EXTRA_COL_MAP:
+            extra_cols[EXTRA_COL_MAP[raw]] = idx
 
     if not all(k in col_map for k in ("L1", "L2", "L3", "L4")):
         raise ValueError(
             f"엑셀 헤더에서 L1~L4 컬럼을 찾을 수 없습니다. 발견된 컬럼: {list(col_map.keys())}"
         )
 
+    def _cell(row_data: tuple, idx: int) -> str:
+        if idx < len(row_data) and row_data[idx] is not None:
+            return str(row_data[idx]).strip()
+        return ""
+
+    # Forward-fill 변수
+    prev_l1 = prev_l2 = prev_l3 = ""
+
     rows: list[ExcelRow] = []
     for row in ws.iter_rows(min_row=2, values_only=True):
-        l1 = row[col_map["L1"]] if col_map["L1"] < len(row) else None
-        l2 = row[col_map["L2"]] if col_map["L2"] < len(row) else None
-        l3 = row[col_map["L3"]] if col_map["L3"] < len(row) else None
-        l4 = row[col_map["L4"]] if col_map["L4"] < len(row) else None
+        l1 = _cell(row, col_map["L1"])
+        l2 = _cell(row, col_map["L2"])
+        l3 = _cell(row, col_map["L3"])
+        l4 = _cell(row, col_map["L4"])
+
+        # Forward-fill: 빈 셀은 이전 값 계승
+        if l1:
+            prev_l1 = l1
+        else:
+            l1 = prev_l1
+        if l2:
+            prev_l2 = l2
+        else:
+            l2 = prev_l2
+        if l3:
+            prev_l3 = l3
+        else:
+            l3 = prev_l3
 
         # 빈 행 건너뛰기 (L4가 없으면 유효하지 않은 행)
-        if not l4 or not str(l4).strip():
+        if not l4:
             continue
 
-        l3_rt = ""
-        if "L3" in related_team_cols and related_team_cols["L3"] < len(row):
-            v = row[related_team_cols["L3"]]
-            l3_rt = str(v).strip() if v else ""
+        l3_rt = _cell(row, related_team_cols["L3"]) if "L3" in related_team_cols else ""
+        l4_rt = _cell(row, related_team_cols["L4"]) if "L4" in related_team_cols else ""
 
-        l4_rt = ""
-        if "L4" in related_team_cols and related_team_cols["L4"] < len(row):
-            v = row[related_team_cols["L4"]]
-            l4_rt = str(v).strip() if v else ""
+        # 추가 컬럼 읽기
+        extra_vals: dict[str, str] = {}
+        for field_name, col_idx in extra_cols.items():
+            extra_vals[field_name] = _cell(row, col_idx)
 
         rows.append(
             ExcelRow(
-                l1=str(l1).strip() if l1 else "",
-                l2=str(l2).strip() if l2 else "",
-                l3=str(l3).strip() if l3 else "",
-                l4=str(l4).strip() if l4 else "",
+                l1=l1,
+                l2=l2,
+                l3=l3,
+                l4=l4,
                 l3_related_team=l3_rt,
                 l4_related_team=l4_rt,
+                organization_type=extra_vals.get("organization_type", ""),
+                organization_name=extra_vals.get("organization_name", ""),
+                manager_name=extra_vals.get("manager_name", ""),
+                manager_id=extra_vals.get("manager_id", ""),
+                keywords=extra_vals.get("keywords", ""),
+                is_ai_utilized=extra_vals.get("is_ai_utilized", ""),
             )
         )
 
     wb.close()
+
+    # 유효성 검증
+    for i, row in enumerate(rows):
+        if row.organization_type and row.organization_type not in VALID_ORG_TYPES:
+            raise ValueError(
+                f"행 {i + 2}: 조직단위 '{row.organization_type}'는 유효하지 않습니다. "
+                f"허용값: {VALID_ORG_TYPES}"
+            )
+        if row.is_ai_utilized:
+            upper = row.is_ai_utilized.upper()
+            if upper not in ("Y", "N", "YES", "NO", "TRUE", "FALSE"):
+                raise ValueError(
+                    f"행 {i + 2}: AI활용 '{row.is_ai_utilized}'는 유효하지 않습니다. "
+                    f"허용값: Y, N"
+                )
+
     return ParsedExcel(rows=rows)
 
 
@@ -102,11 +173,25 @@ def _parse_related_team(value: str) -> list[str] | None:
     return teams if teams else None
 
 
+def _parse_keywords(value: str) -> list[str] | None:
+    """Parse comma-separated keywords string into a list."""
+    if not value:
+        return None
+    items = [k.strip() for k in value.split(",") if k.strip()]
+    return items if items else None
+
+
+def _parse_ai_utilized(value: str) -> bool:
+    """Parse Y/N/Yes/No/TRUE/FALSE to bool."""
+    if not value:
+        return False
+    return value.strip().upper() in ("Y", "YES", "TRUE")
+
+
 def build_hierarchy(parsed: ParsedExcel) -> list[HierarchyNode]:
     """파싱된 데이터를 계층 트리로 변환."""
-    # l1 -> { l2 -> { l3 -> [ (l4_name, l4_related_team) ] } }
+    # l1 -> { l2 -> { l3 -> [L4Entry] } }
     tree: dict[str, dict] = {}
-    # Track related_team per L3 node: (l1, l2, l3) -> related_team str
     l3_rt_map: dict[tuple[str, str, str], str] = {}
 
     for row in parsed.rows:
@@ -120,15 +205,27 @@ def build_hierarchy(parsed: ParsedExcel) -> list[HierarchyNode]:
 
         if row.l3 not in l3_map:
             l3_map[row.l3] = []
-        l4_list: list[tuple[str, str]] = l3_map[row.l3]
+        l4_list: list[L4Entry] = l3_map[row.l3]
 
         # Store L3 related_team (first non-empty wins)
         l3_key = (row.l1, row.l2, row.l3)
         if l3_key not in l3_rt_map and row.l3_related_team:
             l3_rt_map[l3_key] = row.l3_related_team
 
-        if not any(item[0] == row.l4 for item in l4_list):
-            l4_list.append((row.l4, row.l4_related_team))
+        # 중복 L4 방지
+        if not any(item.name == row.l4 for item in l4_list):
+            l4_list.append(
+                L4Entry(
+                    name=row.l4,
+                    related_team=row.l4_related_team,
+                    organization_type=row.organization_type,
+                    organization_name=row.organization_name,
+                    manager_name=row.manager_name,
+                    manager_id=row.manager_id,
+                    keywords=row.keywords,
+                    is_ai_utilized=row.is_ai_utilized,
+                )
+            )
 
     # dict → HierarchyNode 트리
     result: list[HierarchyNode] = []
@@ -139,10 +236,17 @@ def build_hierarchy(parsed: ParsedExcel) -> list[HierarchyNode]:
             for l3_name, l4_list in l3_map.items():
                 l4_nodes = [
                     HierarchyNode(
-                        name=n, level="L4",
-                        related_team=_parse_related_team(rt),
+                        name=entry.name,
+                        level="L4",
+                        related_team=_parse_related_team(entry.related_team),
+                        organization_type=entry.organization_type or None,
+                        organization_name=entry.organization_name or None,
+                        manager_name=entry.manager_name or None,
+                        manager_id=entry.manager_id or None,
+                        keywords=_parse_keywords(entry.keywords),
+                        is_ai_utilized=_parse_ai_utilized(entry.is_ai_utilized),
                     )
-                    for n, rt in l4_list
+                    for entry in l4_list
                 ]
                 l3_rt = l3_rt_map.get((l1_name, l2_name, l3_name), "")
                 l3_nodes.append(HierarchyNode(
@@ -184,19 +288,16 @@ def build_preview(parsed: ParsedExcel) -> UploadPreview:
 
 async def diff_tasks(db: AsyncSession, parsed: ParsedExcel) -> DiffResult:
     """파싱된 데이터를 기존 DB와 비교하여 diff 트리 반환."""
-    # Root 노드 조회
     result = await db.execute(
         select(Task).where(Task.level == "Root", Task.deleted_at.is_(None))
     )
     root = result.scalar_one_or_none()
 
-    # 기존 태스크를 (level, parent_id, name)으로 인덱싱
     all_tasks_result = await db.execute(
         select(Task).where(Task.deleted_at.is_(None))
     )
     all_tasks = list(all_tasks_result.scalars().all())
 
-    # [IMP-08] parent_id + normalized_name → Task 매핑 (띄어쓰기 제외 비교)
     task_by_parent_name: dict[tuple[UUID | None, str], Task] = {}
     for t in all_tasks:
         normalized = _normalize_name(t.name)
@@ -234,26 +335,21 @@ async def diff_tasks(db: AsyncSession, parsed: ParsedExcel) -> DiffResult:
 async def upsert_tasks(
     db: AsyncSession, parsed: ParsedExcel, user_id: UUID
 ) -> UpsertResult:
-    """파싱된 데이터를 DB에 upsert (Bulk 최적화).
-
-    기존: 노드마다 SELECT + INSERT + flush → ~2,500 DB 왕복
-    개선: 사전 인덱싱 1회 + 레벨별 bulk flush 4회 → ~6 DB 왕복
-    """
+    """파싱된 데이터를 DB에 upsert (Bulk 최적화)."""
     created = 0
     skipped = 0
 
-    # ── 1. 기존 태스크 전체 로드 + 인메모리 인덱스 (1 query) ──
+    # 기존 태스크 전체 로드 + 인메모리 인덱스
     all_result = await db.execute(
         select(Task).where(Task.deleted_at.is_(None))
     )
     all_tasks = list(all_result.scalars().all())
 
-    # (parent_id, normalized_name) → Task
     index: dict[tuple[UUID | None, str], Task] = {}
     for t in all_tasks:
         index[(t.parent_id, _normalize_name(t.name))] = t
 
-    # ── 2. Root 노드 조회/생성 ──
+    # Root 노드 조회/생성
     root = next((t for t in all_tasks if t.level == "Root"), None)
     if not root:
         root = Task(
@@ -267,12 +363,17 @@ async def upsert_tasks(
 
     hierarchy = build_hierarchy(parsed)
 
-    # ── 3. 계층 순회: 인메모리 매칭 + 신규 태스크 수집 ──
     new_tasks: list[Task] = []
 
     def _lookup_or_new(
         parent: Task, level: str, name: str, organization: str,
         related_team: list[str] | None = None,
+        organization_type: str | None = None,
+        organization_name: str | None = None,
+        manager_name: str | None = None,
+        manager_id: str | None = None,
+        keywords: list[str] | None = None,
+        is_ai_utilized: bool = False,
     ) -> Task:
         nonlocal created, skipped
         key = (parent.id, _normalize_name(name))
@@ -283,7 +384,13 @@ async def upsert_tasks(
         task = Task(
             parent_id=parent.id, level=level, name=name,
             organization=organization,
+            organization_type=organization_type,
+            organization_name=organization_name,
+            manager_name=manager_name,
+            manager_id=manager_id,
             related_team=related_team,
+            keywords=keywords or [],
+            is_ai_utilized=is_ai_utilized,
             created_by=user_id, updated_by=user_id,
         )
         new_tasks.append(task)
@@ -296,7 +403,6 @@ async def upsert_tasks(
         l1_task = _lookup_or_new(root, "L1", l1_node.name, l1_node.name)
         l1_map.append((l1_task, l1_node))
 
-    # L1 flush → ID 확정, 인덱스 갱신
     await _flush_new(db, new_tasks, index)
 
     # L2 수집
@@ -320,17 +426,22 @@ async def upsert_tasks(
 
     await _flush_new(db, new_tasks, index)
 
-    # L4 수집
+    # L4 수집 — 추가 필드 전달
     for l3_task, l3_node, org in l3_map:
         for l4_node in l3_node.children:
             _lookup_or_new(
                 l3_task, "L4", l4_node.name, org,
                 related_team=l4_node.related_team,
+                organization_type=l4_node.organization_type,
+                organization_name=l4_node.organization_name,
+                manager_name=l4_node.manager_name,
+                manager_id=l4_node.manager_id,
+                keywords=l4_node.keywords,
+                is_ai_utilized=l4_node.is_ai_utilized,
             )
 
     await _flush_new(db, new_tasks, index)
 
-    # ── 4. 커밋 ──
     await db.commit()
     return UpsertResult(created=created, skipped=skipped, total=created + skipped)
 
@@ -346,7 +457,7 @@ async def _flush_new(
     batch = list(pending)
     pending.clear()
     db.add_all(batch)
-    await db.flush()  # 1회 flush로 모든 ID 확정
+    await db.flush()
     for task in batch:
         _create_history(db, task, task.created_by)
         index[(task.parent_id, _normalize_name(task.name))] = task

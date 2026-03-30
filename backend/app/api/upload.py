@@ -1,6 +1,11 @@
 from io import BytesIO
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, status
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 from app.api.deps import DbSession, EditorUser
 from app.schemas.common import ApiResponse
@@ -123,3 +128,89 @@ async def upload_confirm(
     result = await upload_service.upsert_tasks(db, parsed, current_user.id)
     task_cache.invalidate()
     return ApiResponse(success=True, data=result)
+
+
+@router.get("/template")
+async def download_template():
+    """엑셀 업로드 양식 다운로드."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "업무PI양식"
+
+    headers = [
+        "L1", "L2", "L3", "L3 유관팀", "L4", "L4 유관팀",
+        "조직단위", "조직명", "담당자", "사번", "키워드", "AI활용",
+    ]
+    col_widths = [20, 25, 25, 20, 40, 20, 12, 15, 12, 12, 25, 10]
+
+    # 헤더 스타일
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="7952B3", end_color="7952B3", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin_border = Border(
+        left=Side(style="thin", color="D0D0D0"),
+        right=Side(style="thin", color="D0D0D0"),
+        top=Side(style="thin", color="D0D0D0"),
+        bottom=Side(style="thin", color="D0D0D0"),
+    )
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+        ws.column_dimensions[get_column_letter(col_idx)].width = col_widths[col_idx - 1]
+
+    # 샘플 데이터 행
+    sample_row = [
+        "유선사업본부", "통합 마케팅전략 수립", "유선사업전략 수립/실행",
+        "AI보드, Infra운용팀",
+        "(분석) 시장, 경쟁 Trend 및 고객 Data 기반 전략 방향성 수립", "",
+        "본부", "마케팅팀", "홍길동", "A12345", "마케팅, 전략, 분석", "N",
+    ]
+    sample_font = Font(color="999999", italic=True)
+    for col_idx, value in enumerate(sample_row, 1):
+        cell = ws.cell(row=2, column=col_idx, value=value)
+        cell.font = sample_font
+        cell.border = thin_border
+
+    # 데이터 유효성 검사: 조직단위 (G열, 2~1000행)
+    org_type_dv = DataValidation(
+        type="list",
+        formula1='"본부,실,담당,팀"',
+        allow_blank=True,
+    )
+    org_type_dv.error = "본부, 실, 담당, 팀 중 선택해주세요"
+    org_type_dv.errorTitle = "유효하지 않은 조직단위"
+    ws.add_data_validation(org_type_dv)
+    org_type_dv.add("G2:G1000")
+
+    # 데이터 유효성 검사: AI활용 (L열, 2~1000행)
+    ai_dv = DataValidation(
+        type="list",
+        formula1='"Y,N"',
+        allow_blank=True,
+    )
+    ai_dv.error = "Y 또는 N을 선택해주세요"
+    ai_dv.errorTitle = "유효하지 않은 AI활용 값"
+    ws.add_data_validation(ai_dv)
+    ai_dv.add("L2:L1000")
+
+    # 헤더 행 고정
+    ws.freeze_panes = "A2"
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    from urllib.parse import quote
+    filename = "조직_업무PI_양식_ver0.9.xlsx"
+    encoded = quote(filename)
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded}",
+        },
+    )

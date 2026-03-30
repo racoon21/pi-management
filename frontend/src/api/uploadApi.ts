@@ -11,6 +11,14 @@ export interface ExcelRow {
   l2: string;
   l3: string;
   l4: string;
+  l3_related_team: string;
+  l4_related_team: string;
+  organization_type: string;
+  organization_name: string;
+  manager_name: string;
+  manager_id: string;
+  keywords: string;
+  is_ai_utilized: string;
 }
 
 export interface HierarchyNode {
@@ -105,4 +113,5 @@ export const uploadApi = {
   preview: (file: File) => uploadRequest<UploadPreview>('/upload/preview', file),
   diff: (file: File) => uploadRequest<DiffResult>('/upload/diff', file),
   confirm: (file: File) => uploadRequest<UpsertResult>('/upload/confirm', file),
+  templateUrl: `${API_BASE_URL}/upload/template`,
 };
