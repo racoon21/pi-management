@@ -9,7 +9,7 @@ interface TaskCreateData {
   name: string;
   organization: string;
   organization_type?: OrganizationType | null;
-  team?: string | null;
+  organization_name?: string | null;
   manager_name?: string | null;
   manager_id?: string | null;
   related_team?: string[] | null;
@@ -21,7 +21,7 @@ interface TaskUpdateData {
   name?: string;
   organization?: string;
   organization_type?: OrganizationType | null;
-  team?: string | null;
+  organization_name?: string | null;
   manager_name?: string | null;
   manager_id?: string | null;
   related_team?: string[] | null;
@@ -48,6 +48,7 @@ interface TaskState {
   _lastFetchedAt: number;
 
   // Actions
+  invalidateCache: () => void;
   fetchTasks: (force?: boolean) => Promise<void>;
   setTasks: (tasks: TaskGraphItem[]) => void;
   selectTask: (taskId: string | null) => Promise<void>;
@@ -76,6 +77,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
   focusedL1Id: null,
   _lastFetchedAt: 0,
+
+  invalidateCache: () => {
+    set({ _lastFetchedAt: 0 });
+  },
 
   fetchTasks: async (force = false) => {
     // 60초 이내 재호출 방지 (force=true 시 무시)
@@ -213,7 +218,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         name: data.name,
         organization: data.organization,
         organization_type: data.organization_type,
-        team: data.team || '',
+        organization_name: data.organization_name || '',
         manager_name: data.manager_name || '',
         manager_id: data.manager_id || '',
         related_team: data.related_team || null,
@@ -229,7 +234,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         name: newTask.name,
         organization: newTask.organization,
         organization_type: newTask.organization_type,
-        team: newTask.team,
+        organization_name: newTask.organization_name,
         manager_name: newTask.manager_name,
         manager_id: newTask.manager_id,
         related_team: newTask.related_team,
@@ -257,7 +262,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         name: updates.name,
         organization: updates.organization,
         organization_type: updates.organization_type,
-        team: updates.team || undefined,
+        organization_name: updates.organization_name || undefined,
         manager_name: updates.manager_name || undefined,
         manager_id: updates.manager_id || undefined,
         related_team: updates.related_team,
@@ -274,7 +279,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
                 name: updatedTask.name,
                 organization: updatedTask.organization,
                 organization_type: updatedTask.organization_type,
-                team: updatedTask.team,
+                organization_name: updatedTask.organization_name,
                 manager_name: updatedTask.manager_name,
                 manager_id: updatedTask.manager_id,
                 related_team: updatedTask.related_team,

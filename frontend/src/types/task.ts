@@ -8,7 +8,7 @@ export interface TaskGraphItem {
   name: string;
   organization: string;
   organization_type: OrganizationType | null;
-  team: string | null;
+  organization_name: string | null;
   manager_name: string | null;
   manager_id: string | null;
   keywords: string[];
@@ -40,7 +40,7 @@ export interface TaskCreate {
   name: string;
   organization: string;
   organization_type?: OrganizationType | null;
-  team?: string;
+  organization_name?: string;
   manager_name?: string;
   manager_id?: string;
   related_team?: string[] | null;
@@ -52,7 +52,7 @@ export interface TaskUpdate {
   name?: string;
   organization?: string;
   organization_type?: OrganizationType | null;
-  team?: string;
+  organization_name?: string;
   manager_name?: string;
   manager_id?: string;
   related_team?: string[] | null;

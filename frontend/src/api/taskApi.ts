@@ -13,7 +13,7 @@ interface TaskCreateRequest {
   name: string;
   organization: string;
   organization_type?: OrganizationType | null;
-  team: string;
+  organization_name: string;
   manager_name: string;
   manager_id: string;
   related_team?: string[] | null;
@@ -25,7 +25,7 @@ interface TaskUpdateRequest {
   name?: string;
   organization?: string;
   organization_type?: OrganizationType | null;
-  team?: string;
+  organization_name?: string;
   manager_name?: string;
   manager_id?: string;
   related_team?: string[] | null;

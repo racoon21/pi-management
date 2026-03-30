@@ -88,7 +88,7 @@ async def create_task(db: AsyncSession, data: TaskCreate, user_id: UUID | None) 
         name=data.name,
         organization=organization,
         organization_type=data.organization_type,
-        team=data.team,
+        organization_name=data.organization_name,
         manager_name=data.manager_name,
         manager_id=data.manager_id,
         related_team=related_team,
@@ -98,6 +98,7 @@ async def create_task(db: AsyncSession, data: TaskCreate, user_id: UUID | None) 
         updated_by=user_id,
     )
     db.add(task)
+    await db.flush()
 
     history = TaskHistory(
         task_id=task.id,
@@ -276,7 +277,7 @@ def _task_to_snapshot(task: Task) -> dict:
         "name": task.name,
         "organization": task.organization,
         "organization_type": task.organization_type,
-        "team": task.team,
+        "organization_name": task.organization_name,
         "manager_name": task.manager_name,
         "manager_id": task.manager_id,
         "related_team": task.related_team,

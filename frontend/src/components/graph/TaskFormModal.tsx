@@ -36,7 +36,7 @@ export const TaskFormModal = () => {
     name: '',
     organization: '',
     organization_type: '' as string,
-    team: '',
+    organization_name: '',
     manager_name: '',
     manager_id: '',
     related_team: '',
@@ -116,7 +116,7 @@ export const TaskFormModal = () => {
         name: '',
         organization: parentTask.organization,
         organization_type: parentTask.organization_type || '',
-        team: parentTask.team || '',
+        organization_name: parentTask.organization_name || '',
         manager_name: '',
         manager_id: '',
         related_team: '',
@@ -129,7 +129,7 @@ export const TaskFormModal = () => {
         name: selectedTask.name,
         organization: selectedTask.organization,
         organization_type: selectedTask.organization_type || '',
-        team: selectedTask.team || '',
+        organization_name: selectedTask.organization_name || '',
         manager_name: selectedTask.manager_name || '',
         manager_id: selectedTask.manager_id || '',
         related_team: selectedTask.related_team?.join(', ') || '',
@@ -143,7 +143,7 @@ export const TaskFormModal = () => {
         name: '',
         organization: '',
         organization_type: '',
-        team: '',
+        organization_name: '',
         manager_name: '',
         manager_id: '',
         related_team: '',
@@ -181,7 +181,7 @@ export const TaskFormModal = () => {
           // [IMP-05] L1이면 조직명 = 업무명
           organization: isNewL1 ? formData.name : formData.organization,
           organization_type: (formData.organization_type || null) as OrganizationType | null,
-          team: formData.team || null,
+          organization_name: formData.organization_name || null,
           manager_name: formData.manager_name || null,
           manager_id: formData.manager_id || null,
           related_team: showRelatedTeam ? formData.related_team.split(',').map(t => t.trim()).filter(Boolean) : null,
@@ -197,12 +197,12 @@ export const TaskFormModal = () => {
           name: formData.name,
           organization: formData.organization,
           organization_type: (formData.organization_type || null) as OrganizationType | null,
-          team: formData.team || null,
+          organization_name: formData.organization_name || null,
           manager_name: formData.manager_name || null,
           manager_id: formData.manager_id || null,
           related_team: formData.related_team.split(',').map(t => t.trim()).filter(Boolean),
           keywords: formData.keywords.split(',').map(k => k.trim()).filter(Boolean),
-          is_ai_utilized: formData.is_ai_utilized,
+          is_ai_utilized: selectedTask.level === 'L4' ? formData.is_ai_utilized : false,
         });
         toast.success('업무가 수정되었습니다');
         setIsEditing(false);
@@ -303,10 +303,10 @@ export const TaskFormModal = () => {
               disabled={isNewL1}
             />
             <Input
-              label="팀"
-              value={formData.team}
-              onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-              placeholder="팀"
+              label="조직명"
+              value={formData.organization_name}
+              onChange={(e) => setFormData({ ...formData, organization_name: e.target.value })}
+              placeholder="조직명"
             />
           </div>
 
@@ -329,7 +329,7 @@ export const TaskFormModal = () => {
             <Input
               label="유관팀"
               value={formData.related_team}
-              onChange={(e) => setFormData({ ...formData, related_team: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, related_organization_name: e.target.value })}
               placeholder="쉼표로 구분하여 입력 (예: 보안팀, QA팀)"
             />
           )}
@@ -414,9 +414,9 @@ export const TaskFormModal = () => {
                       onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                     />
                     <Input
-                      label="팀"
-                      value={formData.team}
-                      onChange={(e) => setFormData({ ...formData, team: e.target.value })}
+                      label="조직명"
+                      value={formData.organization_name}
+                      onChange={(e) => setFormData({ ...formData, organization_name: e.target.value })}
                     />
                   </div>
 
@@ -437,7 +437,7 @@ export const TaskFormModal = () => {
                     <Input
                       label="유관팀"
                       value={formData.related_team}
-                      onChange={(e) => setFormData({ ...formData, related_team: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, related_organization_name: e.target.value })}
                       placeholder="쉼표로 구분하여 입력 (예: 보안팀, QA팀)"
                     />
                   )}
@@ -449,18 +449,21 @@ export const TaskFormModal = () => {
                     placeholder="쉼표로 구분하여 입력"
                   />
 
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="ai_utilized_edit"
-                      checked={formData.is_ai_utilized}
-                      onChange={(e) => setFormData({ ...formData, is_ai_utilized: e.target.checked })}
-                      className="w-4 h-4 text-[#7952B3] border-border rounded focus:ring-[#7952B3]"
-                    />
-                    <label htmlFor="ai_utilized_edit" className="text-sm text-gray-300">
-                      AI 활용 업무
-                    </label>
-                  </div>
+                  {/* [IMP-06] L4일 때만 AI 체크박스 표시 */}
+                  {selectedTask.level === 'L4' && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="ai_utilized_edit"
+                        checked={formData.is_ai_utilized}
+                        onChange={(e) => setFormData({ ...formData, is_ai_utilized: e.target.checked })}
+                        className="w-4 h-4 text-[#7952B3] border-border rounded focus:ring-[#7952B3]"
+                      />
+                      <label htmlFor="ai_utilized_edit" className="text-sm text-gray-300">
+                        AI 활용 업무
+                      </label>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 pt-4">
                     <Button
@@ -481,10 +484,10 @@ export const TaskFormModal = () => {
                 <div className="space-y-4">
                   {/* Header Info */}
                   <div className="flex items-center gap-2 mb-4">
-                    <Badge variant={selectedTask.is_ai_utilized ? 'ai' : 'primary'}>
+                    <Badge variant={(selectedTask.level === 'L4' && selectedTask.is_ai_utilized) ? 'ai' : 'primary'}>
                       {selectedTask.level}
                     </Badge>
-                    {selectedTask.is_ai_utilized && (
+                    {selectedTask.level === 'L4' && selectedTask.is_ai_utilized && (
                       <Badge variant="ai">
                         <Sparkles size={12} className="mr-1" />
                         AI 활용
@@ -502,12 +505,12 @@ export const TaskFormModal = () => {
                       </div>
                     </div>
 
-                    {selectedTask.team && (
+                    {selectedTask.organization_name && (
                       <div className="flex items-center gap-3 p-3 bg-[#1E1E2A] rounded-lg">
                         <Building size={18} className="text-gray-400" />
                         <div>
-                          <p className="text-xs text-gray-400">팀</p>
-                          <p className="text-sm font-medium text-white">{selectedTask.team}</p>
+                          <p className="text-xs text-gray-400">조직명</p>
+                          <p className="text-sm font-medium text-white">{selectedTask.organization_name}</p>
                         </div>
                       </div>
                     )}
