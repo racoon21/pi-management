@@ -11,39 +11,28 @@ services:
       - "15432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pi_user} -d ${DB_NAME:-pi_management}"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
-  backend:
+  app:
     build:
-      context: ./backend
-      dockerfile: Dockerfile_dev
+      context: .
+      dockerfile: Dockerfile.prod
     environment:
       DATABASE_URL: postgresql+asyncpg://${DB_USER:-pi_user}:${DB_PASSWORD:-pi_password}@db:5432/${DB_NAME:-pi_management}
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-for-local-testing}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      DEBUG: ${DEBUG:-true}
-      CORS_ORIGINS_STR: ${CORS_ORIGINS_STR:-http://localhost:15173,http://127.0.0.1:15173}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      ENVIRONMENT: production
+      DEBUG: "false"
+      CORS_ORIGINS_STR: ${CORS_ORIGINS_STR:-}
+      WORKERS: ${WORKERS:-2}
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "18000:8000"
-    volumes:
-      - ./backend:/app
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "15173:5173"
-    depends_on:
-      - backend
-    environment:
-      VITE_API_URL: ""
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - "${APP_PORT:-8000}:8000"
+    restart: unless-stopped
 
 volumes:
   postgres_data:

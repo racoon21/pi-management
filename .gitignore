@@ -1,6 +1,8 @@
 # ===== Environment & Secrets =====
 .env
 .env.local
+.env.dev
+.env.prod
 .env.*.local
 *.pem
 *.key
