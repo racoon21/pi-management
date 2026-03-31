@@ -8,12 +8,24 @@ class ExcelRow(BaseModel):
     l4: str
     l3_related_team: str = ""
     l4_related_team: str = ""
+    organization_type: str = ""
+    organization_name: str = ""
+    manager_name: str = ""
+    manager_id: str = ""
+    keywords: str = ""
+    is_ai_utilized: str = ""
 
 
 class HierarchyNode(BaseModel):
     name: str
     level: str
     related_team: list[str] | None = None
+    organization_type: str | None = None
+    organization_name: str | None = None
+    manager_name: str | None = None
+    manager_id: str | None = None
+    keywords: list[str] | None = None
+    is_ai_utilized: bool = False
     children: list["HierarchyNode"] = []
 
 

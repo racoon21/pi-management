@@ -413,7 +413,7 @@ export const TaskGraph = () => {
       const matchingTasks = result.filter(t =>
         t.name.toLowerCase().includes(q) ||
         t.organization.toLowerCase().includes(q) ||
-        (t.team?.toLowerCase().includes(q) ?? false) ||
+        (t.organization_name?.toLowerCase().includes(q) ?? false) ||
         (t.manager_name?.toLowerCase().includes(q) ?? false) ||
         (t.keywords?.some(k => k.toLowerCase().includes(q)) ?? false)
       );

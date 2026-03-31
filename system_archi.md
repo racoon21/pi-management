@@ -40,7 +40,7 @@
 |------|-----|
 | 데이터 규모 | 노드 약 3,000개 이상 |
 | 동시 접속 | 20~50명 |
-| 배포 | Cloudflare Pages (FE) + Render (BE) + Supabase (DB) |
+| 배포 | Docker Compose (Frontend + Backend + PostgreSQL) |
 
 ---
 
@@ -346,8 +346,6 @@ pi-management/
 │   └── vite.config.ts                 # Vite 설정 (API 프록시 포함)
 │
 ├── docker-compose.yml                 # PostgreSQL + Backend + Frontend 오케스트레이션
-├── Dockerfile.render                  # 프로덕션 빌드 (Render 배포용)
-├── render.yaml                        # Render IaC 설정
 ├── DEPLOYMENT.md                      # 배포 가이드
 ├── DEVELOPMENT_LOG.md                 # 개발 진행 로그
 ├── guide_v4.md                        # 이전 버전 PRD
@@ -787,9 +785,8 @@ npm run build    # tsc -b && vite build → dist/
 
 | 서비스 | 플랫폼 | 설정 파일 |
 |--------|--------|----------|
-| Frontend | Cloudflare Pages | `vite.config.ts` (빌드 출력 dist/) |
-| Backend | Render | `render.yaml`, `Dockerfile.render` |
-| Database | Supabase | PostgreSQL 15 + PgBouncer |
+| Frontend + Backend | Docker (Dockerfile.prod) | `docker-compose.prod.yml` |
+| Database | Docker (pgvector/pgvector:pg15) | `docker-compose.prod.yml` |
 
 ---
 
@@ -810,7 +807,6 @@ npm run build    # tsc -b && vite build → dist/
 | `4c318be` | 2026-03-03 | 엑셀 업로드 기능 + 그래프 레이아웃 개선 |
 | `4f988a8` | 2026-03-03 | CLAUDE 설정 변경 |
 | `c1b7864` | 2026-03-03 | DEVELOPMENT_LOG.md 생성 |
-| `10c9338` | 2026-03-03 | BaseEdge TypeScript 빌드 에러 수정 (Render 배포 호환) |
 | `d2e34f8` | 2026-03-03 | 미사용 변수 제거 - TypeScript 빌드 에러 해결 |
 
 ---
@@ -832,7 +828,7 @@ npm run build    # tsc -b && vite build → dist/
 - [x] 노드 확장/축소 (개별 + 전체)
 - [x] 엑셀 업로드 (4단계 워크플로우: 업로드→미리보기→비교→반영)
 - [x] 반응형 레이아웃 (사이드바 접기/펼치기)
-- [x] Cloudflare + Render + Supabase 배포
+- [x] Docker Compose 프로덕션 배포
 - [x] PgBouncer 호환 DB 연결
 - [x] Docker Compose 개발 환경 (DB + Backend + Frontend)
 - [x] Admin 활동 로그 원천 연결 (task history + 계정 등록 통합 activity feed, 기본 조회 화면)

@@ -2,16 +2,16 @@ import type { TaskGraphItem, TaskDetail, User, TaskHistory } from '../types/task
 
 // L1 조직 정의 (10개)
 const L1_ORGANIZATIONS = [
-  { name: '네트워크인프라', team: '인프라운영팀', keywords: ['네트워크', '인프라', '운영'] },
-  { name: 'AI/빅데이터', team: 'AI플랫폼팀', keywords: ['AI', '빅데이터', '분석'] },
-  { name: '클라우드서비스', team: '클라우드팀', keywords: ['클라우드', 'AWS', 'Azure'] },
-  { name: '보안관제', team: '보안팀', keywords: ['보안', '관제', '침해대응'] },
-  { name: '고객서비스', team: '고객지원팀', keywords: ['고객', 'CS', '서비스'] },
-  { name: '미디어플랫폼', team: '미디어팀', keywords: ['미디어', 'OTT', '콘텐츠'] },
-  { name: '기업솔루션', team: 'B2B팀', keywords: ['기업', 'B2B', '솔루션'] },
-  { name: '디지털혁신', team: 'DX팀', keywords: ['DX', '혁신', '디지털'] },
-  { name: '데이터센터', team: 'IDC팀', keywords: ['IDC', '데이터센터', '호스팅'] },
-  { name: '품질관리', team: 'QA팀', keywords: ['품질', 'QA', '테스트'] },
+  { name: '네트워크인프라', organization_name: '인프라운영팀', keywords: ['네트워크', '인프라', '운영'] },
+  { name: 'AI/빅데이터', organization_name: 'AI플랫폼팀', keywords: ['AI', '빅데이터', '분석'] },
+  { name: '클라우드서비스', organization_name: '클라우드팀', keywords: ['클라우드', 'AWS', 'Azure'] },
+  { name: '보안관제', organization_name: '보안팀', keywords: ['보안', '관제', '침해대응'] },
+  { name: '고객서비스', organization_name: '고객지원팀', keywords: ['고객', 'CS', '서비스'] },
+  { name: '미디어플랫폼', organization_name: '미디어팀', keywords: ['미디어', 'OTT', '콘텐츠'] },
+  { name: '기업솔루션', organization_name: 'B2B팀', keywords: ['기업', 'B2B', '솔루션'] },
+  { name: '디지털혁신', organization_name: 'DX팀', keywords: ['DX', '혁신', '디지털'] },
+  { name: '데이터센터', organization_name: 'IDC팀', keywords: ['IDC', '데이터센터', '호스팅'] },
+  { name: '품질관리', organization_name: 'QA팀', keywords: ['품질', 'QA', '테스트'] },
 ];
 
 // L2 업무 카테고리
@@ -56,12 +56,12 @@ const generateMockTasks = (): TaskGraphItem[] => {
     name: 'SKB',
     organization: 'SK브로드밴드',
     organization_type: null,
-    team: '전사',
+    organization_name: '전사',
     manager_name: '대표이사',
     manager_id: 'CEO001',
     keywords: ['SKB', '통신', '브로드밴드'],
     is_ai_utilized: false,
-    related_team: null,
+    related_organization_name: null,
   });
 
   // L1 노드 (10개)
@@ -76,12 +76,12 @@ const generateMockTasks = (): TaskGraphItem[] => {
       name: org.name,
       organization: org.name,
       organization_type: null,
-      team: org.team,
+      organization_name: org.organization_name,
       manager_name: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].name,
       manager_id: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].id,
       keywords: org.keywords,
       is_ai_utilized: Math.random() > 0.7,
-      related_team: null,
+      related_organization_name: null,
     });
   });
 
@@ -100,12 +100,12 @@ const generateMockTasks = (): TaskGraphItem[] => {
         name: `${l1Org.name} ${l2Cat}`,
         organization: l1Org.name,
         organization_type: null,
-        team: l1Org.team,
+        organization_name: l1Org.organization_name,
         manager_name: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].name,
         manager_id: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].id,
         keywords: [...l1Org.keywords, l2Cat],
         is_ai_utilized: Math.random() > 0.6,
-        related_team: null,
+        related_organization_name: null,
       });
 
       L3_SUBCATEGORIES.forEach((l3Sub) => {
@@ -117,12 +117,12 @@ const generateMockTasks = (): TaskGraphItem[] => {
           name: `${l2Cat} ${l3Sub}`,
           organization: l1Org.name,
           organization_type: null,
-          team: l1Org.team,
+          organization_name: l1Org.organization_name,
           manager_name: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].name,
           manager_id: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].id,
           keywords: [...l1Org.keywords, l2Cat, l3Sub],
           is_ai_utilized: Math.random() > 0.5,
-          related_team: null,
+          related_organization_name: null,
         });
 
         // L4 노드 생성 (각 L3당 약 6-7개)
@@ -144,12 +144,12 @@ const generateMockTasks = (): TaskGraphItem[] => {
             name: `${l3Sub} - ${taskName}`,
             organization: l1Org.name,
             organization_type: null,
-            team: l1Org.team,
+            organization_name: l1Org.organization_name,
             manager_name: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].name,
             manager_id: MANAGERS[Math.floor(Math.random() * MANAGERS.length)].id,
             keywords: [...l1Org.keywords, l2Cat, l3Sub, taskName],
             is_ai_utilized: Math.random() > 0.4,
-            related_team: null,
+            related_organization_name: null,
           });
           l4Count++;
         }

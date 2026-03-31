@@ -77,10 +77,10 @@ export const DetailPanel = () => {
       {/* Header */}
       <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Badge variant={selectedTask.is_ai_utilized ? 'ai' : 'primary'}>
+          <Badge variant={(selectedTask.level === 'L4' && selectedTask.is_ai_utilized) ? 'ai' : 'primary'}>
             {selectedTask.level}
           </Badge>
-          {selectedTask.is_ai_utilized && (
+          {selectedTask.level === 'L4' && selectedTask.is_ai_utilized && (
             <Badge variant="ai">
               <Sparkles size={12} className="mr-1" />
               AI
@@ -138,9 +138,9 @@ export const DetailPanel = () => {
                 onChange={(e) => setEditData({ ...editData, organization: e.target.value })}
               />
               <Input
-                label="팀"
-                value={editData.team || ''}
-                onChange={(e) => setEditData({ ...editData, team: e.target.value })}
+                label="조직명"
+                value={editData.organization_name || ''}
+                onChange={(e) => setEditData({ ...editData, organization_name: e.target.value })}
               />
               <Input
                 label="담당자"
@@ -160,18 +160,21 @@ export const DetailPanel = () => {
                   keywords: e.target.value.split(',').map((k: string) => k.trim()).filter(Boolean)
                 })}
               />
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_ai_utilized"
-                  checked={editData.is_ai_utilized}
-                  onChange={(e) => setEditData({ ...editData, is_ai_utilized: e.target.checked })}
-                  className="w-4 h-4 text-[#7952B3] border-border rounded focus:ring-[#7952B3]"
-                />
-                <label htmlFor="is_ai_utilized" className="text-sm text-gray-300">
-                  AI 활용 업무
-                </label>
-              </div>
+              {/* [IMP-06] L4일 때만 AI 체크박스 표시 */}
+              {selectedTask.level === 'L4' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_ai_utilized"
+                    checked={editData.is_ai_utilized}
+                    onChange={(e) => setEditData({ ...editData, is_ai_utilized: e.target.checked })}
+                    className="w-4 h-4 text-[#7952B3] border-border rounded focus:ring-[#7952B3]"
+                  />
+                  <label htmlFor="is_ai_utilized" className="text-sm text-gray-300">
+                    AI 활용 업무
+                  </label>
+                </div>
+              )}
             </div>
           ) : (
             /* View Mode */
@@ -191,12 +194,12 @@ export const DetailPanel = () => {
                   </div>
                 </div>
 
-                {selectedTask.team && (
+                {selectedTask.organization_name && (
                   <div className="flex items-start gap-3">
                     <Building size={18} className="text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-sm text-gray-500">팀</p>
-                      <p className="text-sm font-medium text-white">{selectedTask.team}</p>
+                      <p className="text-sm text-gray-500">조직명</p>
+                      <p className="text-sm font-medium text-white">{selectedTask.organization_name}</p>
                     </div>
                   </div>
                 )}

@@ -24,7 +24,7 @@ class TaskGraphItem(BaseModel):
 
 
 class TaskDetail(TaskGraphItem):
-    team: str | None
+    organization_name: str | None
     manager_name: str | None
     manager_id: str | None
     version: int
@@ -39,7 +39,7 @@ class TaskCreate(BaseModel):
     name: str
     organization: str
     organization_type: str | None = None
-    team: str | None = None
+    organization_name: str | None = None
     manager_name: str | None = None
     manager_id: str | None = None
     related_team: list[str] | None = None
@@ -58,7 +58,7 @@ class TaskUpdate(BaseModel):
     name: str | None = None
     organization: str | None = None
     organization_type: str | None = None
-    team: str | None = None
+    organization_name: str | None = None
     manager_name: str | None = None
     manager_id: str | None = None
     related_team: list[str] | None = None

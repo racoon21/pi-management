@@ -40,7 +40,7 @@ export const DetailSidebar = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: '', organization: '', organization_type: '' as string,
-    team: '', manager_name: '', manager_id: '', keywords: '',
+    organization_name: '', manager_name: '', manager_id: '', keywords: '',
     is_ai_utilized: false,
   });
 
@@ -76,7 +76,7 @@ export const DetailSidebar = () => {
       name: selectedTask.name,
       organization: selectedTask.organization,
       organization_type: selectedTask.organization_type || '',
-      team: selectedTask.team || '',
+      organization_name: selectedTask.organization_name || '',
       manager_name: selectedTask.manager_name || '',
       manager_id: selectedTask.manager_id || '',
       keywords: selectedTask.keywords?.join(', ') || '',
@@ -93,7 +93,7 @@ export const DetailSidebar = () => {
         name: formData.name,
         organization: isL1 ? formData.name : formData.organization,
         organization_type: (formData.organization_type || null) as OrganizationType | null,
-        team: formData.team || null,
+        organization_name: formData.organization_name || null,
         manager_name: formData.manager_name || null,
         manager_id: formData.manager_id || null,
         keywords: formData.keywords.split(',').map(k => k.trim()).filter(Boolean),
@@ -221,8 +221,8 @@ export const DetailSidebar = () => {
                 onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                 disabled={isL1} />
 
-              <Input label="팀" value={formData.team}
-                onChange={(e) => setFormData({ ...formData, team: e.target.value })} />
+              <Input label="조직명" value={formData.organization_name}
+                onChange={(e) => setFormData({ ...formData, organization_name: e.target.value })} />
 
               <div className="grid grid-cols-2 gap-3">
                 <Input label="담당자" value={formData.manager_name}

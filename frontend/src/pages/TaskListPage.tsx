@@ -20,6 +20,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useModalStore } from '../stores/modalStore';
 import { permissions } from '../utils/permissions';
 import { Badge } from '../components/shared/Badge';
+import { GlobalModal } from '../components/graph/GlobalModal';
 import toast from 'react-hot-toast';
 import type { TaskGraphItem, OrganizationType } from '../types/task';
 
@@ -78,7 +79,7 @@ interface EditFormData {
   name: string;
   organization: string;
   organization_type: string;
-  team: string;
+  organization_name: string;
   manager_name: string;
   manager_id: string;
   related_team: string;
@@ -91,7 +92,7 @@ function taskToForm(t: TaskGraphItem): EditFormData {
     name: t.name,
     organization: t.organization,
     organization_type: t.organization_type || '',
-    team: t.team || '',
+    organization_name: t.organization_name || '',
     manager_name: t.manager_name || '',
     manager_id: t.manager_id || '',
     related_team: t.related_team?.join(', ') || '',
@@ -153,7 +154,7 @@ export const TaskListPage = () => {
       preds.push((t) =>
         t.name.toLowerCase().includes(q) ||
         t.organization.toLowerCase().includes(q) ||
-        (t.team?.toLowerCase().includes(q) ?? false) ||
+        (t.organization_name?.toLowerCase().includes(q) ?? false) ||
         (t.manager_name?.toLowerCase().includes(q) ?? false) ||
         (t.keywords?.some((k) => k.toLowerCase().includes(q)) ?? false),
       );
@@ -203,12 +204,12 @@ export const TaskListPage = () => {
         name: form.name,
         organization: form.organization,
         organization_type: (form.organization_type || null) as OrganizationType | null,
-        team: form.team || null,
+        organization_name: form.organization_name || null,
         manager_name: form.manager_name || null,
         manager_id: form.manager_id || null,
         related_team: showRelated ? form.related_team.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
         keywords: form.keywords.split(',').map((s) => s.trim()).filter(Boolean),
-        is_ai_utilized: form.is_ai_utilized,
+        is_ai_utilized: task?.level === 'L4' ? form.is_ai_utilized : false,
       });
       toast.success('저장되었습니다');
       cancelEdit();
@@ -280,14 +281,14 @@ export const TaskListPage = () => {
               onChange={(e) => setForm({ ...form, organization_type: e.target.value })}
               className="bg-input border border-border rounded px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
             >
-              <option value="">단위</option>
+              <option value="" disabled>선택 없음</option>
               {ORG_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <input
-              value={form.team}
-              onChange={(e) => setForm({ ...form, team: e.target.value })}
+              value={form.organization_name}
+              onChange={(e) => setForm({ ...form, organization_name: e.target.value })}
               className="bg-input border border-border rounded px-2 py-1 text-xs text-white focus:border-primary focus:outline-none w-24"
-              placeholder="팀"
+              placeholder="조직명"
             />
           </div>
 
@@ -328,16 +329,19 @@ export const TaskListPage = () => {
                 />
               </>
             )}
-            <label className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.is_ai_utilized}
-                onChange={(e) => setForm({ ...form, is_ai_utilized: e.target.checked })}
-                className="w-3.5 h-3.5 text-primary border-border rounded focus:ring-primary"
-              />
-              <Sparkles size={12} />
-              AI 활용
-            </label>
+            {/* [IMP-06] L4일 때만 AI 체크박스 표시 */}
+            {node.level === 'L4' && (
+              <label className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.is_ai_utilized}
+                  onChange={(e) => setForm({ ...form, is_ai_utilized: e.target.checked })}
+                  className="w-3.5 h-3.5 text-primary border-border rounded focus:ring-primary"
+                />
+                <Sparkles size={12} />
+                AI 활용
+              </label>
+            )}
             <div className="flex items-center gap-1 ml-2">
               <button
                 onClick={saveEdit}
@@ -398,7 +402,7 @@ export const TaskListPage = () => {
         </span>
 
         {/* AI badge */}
-        {node.is_ai_utilized && (
+        {node.level === 'L4' && node.is_ai_utilized && (
           <Badge variant="ai" size="sm">
             <Sparkles size={10} className="mr-0.5" />AI
           </Badge>
@@ -413,10 +417,10 @@ export const TaskListPage = () => {
             {node.organization}
           </span>
 
-          {node.team && (
-            <span className="flex items-center gap-1 w-24 truncate" title={node.team}>
+          {node.organization_name && (
+            <span className="flex items-center gap-1 w-24 truncate" title={node.organization_name}>
               <Users size={12} className="flex-shrink-0" />
-              {node.team}
+              {node.organization_name}
             </span>
           )}
 
@@ -568,6 +572,7 @@ export const TaskListPage = () => {
           <div className="pb-8">{filteredTree.map((node) => renderRow(node))}</div>
         )}
       </div>
+      <GlobalModal />
     </div>
   );
 };

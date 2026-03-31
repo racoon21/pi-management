@@ -10,7 +10,6 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: mode !== 'production',
-      // Cloudflare Pages 최적화
       rollupOptions: {
         output: {
           manualChunks: {

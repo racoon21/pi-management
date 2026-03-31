@@ -28,5 +28,4 @@ ENV DEBUG=false
 # 포트 노출
 EXPOSE 8000
 
-# Render는 $PORT 환경변수 사용
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
